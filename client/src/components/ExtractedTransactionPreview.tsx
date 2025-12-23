@@ -14,8 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency } from "./SummaryCard";
-import { defaultCategories, type Category, CategoryIcon } from "./CategoryBadge";
+import { defaultCategories, type Category, CategoryIcon, NatureBadge } from "./CategoryBadge";
 import type { StatementType } from "./StatementUpload";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 export interface ExtractedTransaction {
   id: string;
@@ -135,10 +141,28 @@ export function ExtractedTransactionPreview({
           <span className="text-sm">{selectedCount} de {transactions.length} selecionadas</span>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
-            <AlertTriangle className="w-3 h-3 mr-1" />
-            Revise as categorias sugeridas
-          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="text-xs cursor-help">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Revise as categorias sugeridas
+                <HelpCircle className="w-3 h-3 ml-1" />
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <p className="font-medium">Por que revisar?</p>
+              <p className="text-xs mt-1">
+                A IA faz sugestões baseadas na descrição, mas você conhece melhor seus gastos.
+                Clique na categoria para alterar se necessário.
+              </p>
+              <p className="text-xs mt-2">
+                <strong>Fixa:</strong> Valores que se repetem todo mês (aluguel, assinaturas)
+              </p>
+              <p className="text-xs">
+                <strong>Variável:</strong> Valores que mudam (supermercado, lazer)
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -239,7 +263,16 @@ export function ExtractedTransactionPreview({
                     <SelectItem key={cat.id} value={cat.id}>
                       <div className="flex items-center gap-2">
                         <CatIcon className="w-4 h-4" style={{ color: cat.color }} />
-                        {cat.name}
+                        <span>{cat.name}</span>
+                        {cat.nature && (
+                          <span className={`text-[10px] px-1 py-0.5 rounded ${
+                            cat.nature === "fixed" 
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          }`}>
+                            {cat.nature === "fixed" ? "F" : "V"}
+                          </span>
+                        )}
                       </div>
                     </SelectItem>
                   );

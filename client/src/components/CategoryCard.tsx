@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Category } from "./CategoryBadge";
+import { NatureBadge } from "./CategoryBadge";
 
 interface CategoryCardProps {
   category: Category;
@@ -42,6 +43,7 @@ export function CategoryCard({
         <Badge variant="secondary" className="text-xs">
           {category.type === "income" ? "Receita" : "Despesa"}
         </Badge>
+        {category.nature && <NatureBadge nature={category.nature} />}
         <div className="flex items-center gap-1 invisible group-hover:visible">
           <Button
             variant="ghost"

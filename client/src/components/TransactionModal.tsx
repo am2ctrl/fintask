@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, HelpCircle, Lock, Shuffle } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,12 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { type Category, defaultCategories } from "./CategoryBadge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { type Category, defaultCategories, expenseNatureInfo, NatureBadge } from "./CategoryBadge";
 import type { Transaction } from "./TransactionItem";
 
 interface TransactionModalProps {
@@ -61,6 +67,7 @@ export function TransactionModal({
   }, [transaction, open]);
 
   const filteredCategories = defaultCategories.filter((c) => c.type === type);
+  const selectedCategory = defaultCategories.find(c => c.id === categoryId);
 
   const handleSave = () => {
     if (!amount || !categoryId || !description) return;
@@ -82,38 +89,73 @@ export function TransactionModal({
           <DialogTitle>
             {transaction ? "Editar Transação" : "Nova Transação"}
           </DialogTitle>
+          <DialogDescription>
+            Preencha os dados da transação. Passe o mouse sobre os itens para ver dicas.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={type === "income" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => {
-                setType("income");
-                setCategoryId("");
-              }}
-              data-testid="button-type-income"
-            >
-              Receita
-            </Button>
-            <Button
-              type="button"
-              variant={type === "expense" ? "default" : "outline"}
-              className="flex-1"
-              onClick={() => {
-                setType("expense");
-                setCategoryId("");
-              }}
-              data-testid="button-type-expense"
-            >
-              Despesa
-            </Button>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label>Tipo de Transação</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-medium">Receita vs Despesa</p>
+                  <p className="text-xs mt-1">
+                    <strong>Receita:</strong> Dinheiro que entra (salário, freelance, vendas)
+                  </p>
+                  <p className="text-xs mt-1">
+                    <strong>Despesa:</strong> Dinheiro que sai (contas, compras, serviços)
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={type === "income" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setType("income");
+                  setCategoryId("");
+                }}
+                data-testid="button-type-income"
+              >
+                Receita
+              </Button>
+              <Button
+                type="button"
+                variant={type === "expense" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => {
+                  setType("expense");
+                  setCategoryId("");
+                }}
+                data-testid="button-type-expense"
+              >
+                Despesa
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">Valor</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="amount">Valor</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Digite o valor total da transação em reais.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use ponto ou vírgula para centavos. Ex: 150.50
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
                 R$
@@ -157,32 +199,96 @@ export function TransactionModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="category">Categoria</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-medium">Como escolher a categoria?</p>
+                  <p className="text-xs mt-1">
+                    Escolha a categoria que melhor descreve o tipo de gasto ou receita.
+                    Isso ajuda a entender para onde vai seu dinheiro.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger data-testid="select-category">
                 <SelectValue placeholder="Selecione uma categoria" />
               </SelectTrigger>
               <SelectContent>
-                {filteredCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      {category.name}
-                    </div>
-                  </SelectItem>
-                ))}
+                {filteredCategories.map((category) => {
+                  const Icon = category.icon;
+                  return (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" style={{ color: category.color }} />
+                        <span>{category.name}</span>
+                        {category.nature && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            category.nature === "fixed" 
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          }`}>
+                            {category.nature === "fixed" ? "Fixa" : "Var"}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+
+            {selectedCategory?.description && (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                {selectedCategory.description}
+              </p>
+            )}
           </div>
 
+          {type === "expense" && (
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Lock className="w-4 h-4 text-blue-500" />
+                Despesa Fixa
+                <Shuffle className="w-4 h-4 text-amber-500 ml-2" />
+                Despesa Variável
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                <div>
+                  <p className="font-medium text-blue-600 dark:text-blue-400">Fixa:</p>
+                  <p>{expenseNatureInfo.fixed.description}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-amber-600 dark:text-amber-400">Variável:</p>
+                  <p>{expenseNatureInfo.variable.description}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-medium">Dica para descrição</p>
+                  <p className="text-xs mt-1">
+                    Seja específico! Em vez de "Compra", escreva "Supermercado Extra - compras do mês".
+                    Isso facilita encontrar a transação depois.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <Textarea
               id="description"
-              placeholder="Descreva a transação..."
+              placeholder="Descreva a transação... Ex: Supermercado Extra - compras da semana"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="resize-none"
