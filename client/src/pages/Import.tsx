@@ -1,28 +1,33 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { StatementUpload } from "@/components/StatementUpload";
+import { StatementUpload, type StatementType } from "@/components/StatementUpload";
 import {
   ExtractedTransactionPreview,
   type ExtractedTransaction,
 } from "@/components/ExtractedTransactionPreview";
 import { defaultCategories, type Category } from "@/components/CategoryBadge";
 import { apiRequest } from "@/lib/queryClient";
+import { Card } from "@/components/ui/card";
+import { Wallet, CreditCard, Upload, CheckCircle2, FileSearch, Sparkles } from "lucide-react";
 
 type ImportStep = "upload" | "preview" | "complete";
 
 export default function Import() {
   const [step, setStep] = useState<ImportStep>("upload");
   const [extractedTransactions, setExtractedTransactions] = useState<ExtractedTransaction[]>([]);
+  const [statementType, setStatementType] = useState<StatementType>("checking");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const handleUploadComplete = async (text: string, fileName: string) => {
+  const handleUploadComplete = async (text: string, fileName: string, type: StatementType) => {
+    setStatementType(type);
     setIsProcessing(true);
     
     try {
       const response = await apiRequest("POST", "/api/extract-transactions", {
         text,
         fileName,
+        statementType: type,
       });
 
       const data = await response.json();
@@ -33,6 +38,8 @@ export default function Import() {
             (c) => c.name.toLowerCase() === t.category?.toLowerCase()
           ) || defaultCategories.find((c) => c.type === t.type) || defaultCategories[4];
 
+          const isRefund = type === "credit_card" && t.type === "income";
+
           return {
             id: `extracted-${index}`,
             date: new Date(t.date),
@@ -42,6 +49,7 @@ export default function Import() {
             suggestedCategory: category,
             confidence: t.confidence || 0.8,
             selected: true,
+            isRefund,
           };
         }
       );
@@ -51,7 +59,7 @@ export default function Import() {
       
       toast({
         title: "Extração concluída",
-        description: `${transactions.length} transações foram extraídas do extrato.`,
+        description: `${transactions.length} transações foram extraídas do ${type === "checking" ? "extrato bancário" : "fatura do cartão"}.`,
       });
     } catch (error) {
       console.error("Error extracting transactions:", error);
@@ -73,6 +81,7 @@ export default function Import() {
         type: t.type,
         categoryId: t.suggestedCategory.id,
         description: t.description,
+        source: statementType,
       }));
 
       await apiRequest("POST", "/api/transactions/batch", {
@@ -109,25 +118,100 @@ export default function Import() {
       <div>
         <h1 className="text-2xl font-semibold">Importar Extrato</h1>
         <p className="text-sm text-muted-foreground">
-          Faça upload do seu extrato bancário e deixe a IA identificar as transações
+          Faça upload do seu extrato bancário ou fatura de cartão e deixe a IA identificar as transações
         </p>
       </div>
 
       {step === "upload" && (
-        <div className="max-w-2xl">
-          <StatementUpload
-            onUploadComplete={handleUploadComplete}
-            isProcessing={isProcessing}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <StatementUpload
+              onUploadComplete={handleUploadComplete}
+              isProcessing={isProcessing}
+            />
+          </div>
 
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-            <h4 className="font-medium mb-2">Como funciona?</h4>
-            <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Faça upload do extrato do seu banco (PDF, CSV, TXT ou OFX)</li>
-              <li>Nossa IA analisa e extrai todas as transações automaticamente</li>
-              <li>Revise as categorias sugeridas e faça ajustes se necessário</li>
-              <li>Confirme para adicionar as transações ao seu histórico</li>
-            </ol>
+          <div className="space-y-4">
+            <Card className="p-5">
+              <h4 className="font-medium mb-4 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Como funciona
+              </h4>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
+                    1
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Escolha o tipo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Conta corrente ou cartão de crédito
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
+                    2
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Faça o upload</p>
+                    <p className="text-xs text-muted-foreground">
+                      Arraste ou selecione seu arquivo
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
+                    3
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Revise e ajuste</p>
+                    <p className="text-xs text-muted-foreground">
+                      Confira as categorias sugeridas pela IA
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-sm font-medium text-primary-foreground">
+                    4
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Confirme</p>
+                    <p className="text-xs text-muted-foreground">
+                      Importe as transações selecionadas
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <h4 className="font-medium mb-3">Tipos de Extrato</h4>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-chart-2/10">
+                    <Wallet className="w-4 h-4 text-chart-2" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Conta Corrente</p>
+                    <p className="text-xs text-muted-foreground">
+                      PIX, TED, DOC, boletos, salários
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-chart-3/10">
+                    <CreditCard className="w-4 h-4 text-chart-3" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Cartão de Crédito</p>
+                    <p className="text-xs text-muted-foreground">
+                      Compras, parcelas, estornos, cashback
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       )}
@@ -135,6 +219,7 @@ export default function Import() {
       {step === "preview" && (
         <ExtractedTransactionPreview
           transactions={extractedTransactions}
+          statementType={statementType}
           onTransactionsChange={setExtractedTransactions}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
@@ -142,30 +227,19 @@ export default function Import() {
       )}
 
       {step === "complete" && (
-        <div className="max-w-2xl text-center py-12">
+        <Card className="max-w-2xl mx-auto text-center py-12 px-6">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+            <CheckCircle2 className="w-8 h-8 text-primary" />
           </div>
           <h2 className="text-xl font-semibold mb-2">Importação Concluída!</h2>
           <p className="text-muted-foreground mb-6">
-            Suas transações foram adicionadas com sucesso ao histórico.
+            Suas transações do {statementType === "checking" ? "extrato bancário" : "cartão de crédito"} foram adicionadas com sucesso ao histórico.
           </p>
           <div className="flex items-center justify-center gap-4">
             <a href="/" className="text-primary hover:underline">
               Ver Dashboard
             </a>
+            <span className="text-muted-foreground">|</span>
             <button
               onClick={handleNewImport}
               className="text-primary hover:underline"
@@ -173,7 +247,7 @@ export default function Import() {
               Importar outro extrato
             </button>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

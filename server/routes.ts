@@ -15,21 +15,43 @@ export async function registerRoutes(
   
   app.post("/api/extract-transactions", async (req, res) => {
     try {
-      const { text, fileName } = req.body;
+      const { text, fileName, statementType } = req.body;
 
       if (!text) {
         return res.status(400).json({ error: "No text provided" });
       }
 
-      const prompt = `Você é um assistente especializado em extrair transações financeiras de extratos bancários.
+      const isChecking = statementType === "checking";
+      const statementContext = isChecking
+        ? `Este é um EXTRATO DE CONTA CORRENTE. As transações típicas incluem:
+           - Receitas: Salários, PIX recebidos, TED recebidos, depósitos
+           - Despesas: PIX enviados, TED enviados, pagamentos de boletos, débitos automáticos, tarifas bancárias`
+        : `Esta é uma FATURA DE CARTÃO DE CRÉDITO. As transações típicas incluem:
+           - Despesas: Compras em lojas, restaurantes, serviços online, assinaturas, parcelas
+           - Receitas (estornos): Devoluções, cashback, reembolsos, cancelamentos
+           IMPORTANTE: Na fatura de cartão, valores NEGATIVOS geralmente são estornos/reembolsos (marque como income).`;
 
-Analise o seguinte texto de extrato bancário e extraia todas as transações. Para cada transação, identifique:
+      const prompt = `Você é um assistente especializado em extrair transações financeiras de extratos bancários brasileiros.
+
+${statementContext}
+
+Analise o seguinte texto e extraia todas as transações. Para cada transação, identifique:
 1. A data (formato YYYY-MM-DD)
-2. A descrição
-3. O valor (número positivo)
-4. O tipo ("income" para receita/crédito ou "expense" para despesa/débito)
+2. A descrição original
+3. O valor (número positivo, sem sinal)
+4. O tipo ("income" para receita/crédito/estorno ou "expense" para despesa/débito/compra)
 5. A categoria sugerida (escolha entre: Salário, Freelance, Investimentos, Outros, Alimentação, Transporte, Moradia, Saúde, Educação, Lazer, Contas, Compras)
 6. Um nível de confiança de 0 a 1 na classificação
+
+Regras de classificação:
+- PIX RECEBIDO, TED RECEBIDO, SALARIO, CREDITO = income
+- PIX ENVIADO, PAGAMENTO, DEBITO, COMPRA = expense
+- ESTORNO, DEVOLUCAO, CASHBACK, REEMBOLSO = income
+- Compras em supermercados = Alimentação
+- UBER, 99, TAXI, COMBUSTIVEL, POSTO = Transporte
+- NETFLIX, SPOTIFY, CINEMA = Lazer
+- FARMACIA, DROGARIA, HOSPITAL = Saúde
+- ALUGUEL, CONDOMINIO, LUZ, AGUA, GAS = Moradia ou Contas
 
 Retorne APENAS um JSON válido no seguinte formato:
 {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, X, ChevronDown, AlertTriangle } from "lucide-react";
+import { Check, X, AlertTriangle, Wallet, CreditCard, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency } from "./SummaryCard";
 import { defaultCategories, type Category } from "./CategoryBadge";
+import type { StatementType } from "./StatementUpload";
 
 export interface ExtractedTransaction {
   id: string;
@@ -25,10 +26,12 @@ export interface ExtractedTransaction {
   suggestedCategory: Category;
   confidence: number;
   selected: boolean;
+  isRefund?: boolean;
 }
 
 interface ExtractedTransactionPreviewProps {
   transactions: ExtractedTransaction[];
+  statementType: StatementType;
   onTransactionsChange: (transactions: ExtractedTransaction[]) => void;
   onConfirm: (transactions: ExtractedTransaction[]) => void;
   onCancel: () => void;
@@ -37,6 +40,7 @@ interface ExtractedTransactionPreviewProps {
 
 export function ExtractedTransactionPreview({
   transactions,
+  statementType,
   onTransactionsChange,
   onConfirm,
   onCancel,
@@ -49,6 +53,7 @@ export function ExtractedTransactionPreview({
   const totalExpense = transactions
     .filter((t) => t.selected && t.type === "expense")
     .reduce((sum, t) => sum + t.amount, 0);
+  const refundCount = transactions.filter((t) => t.isRefund).length;
 
   const toggleAll = (selected: boolean) => {
     onTransactionsChange(transactions.map((t) => ({ ...t, selected })));
@@ -82,35 +87,52 @@ export function ExtractedTransactionPreview({
   const filteredCategories = (type: "income" | "expense") =>
     defaultCategories.filter((c) => c.type === type);
 
+  const statementInfo = statementType === "checking" 
+    ? { icon: Wallet, label: "Conta Corrente", color: "text-chart-2", bg: "bg-chart-2/10" }
+    : { icon: CreditCard, label: "Cartão de Crédito", color: "text-chart-3", bg: "bg-chart-3/10" };
+
   return (
     <Card className="overflow-hidden" data-testid="extracted-preview">
       <div className="p-4 border-b bg-muted/30">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h3 className="font-semibold">Transações Extraídas</h3>
-            <p className="text-sm text-muted-foreground">
-              {transactions.length} transações encontradas - {selectedCount} selecionadas
-            </p>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${statementInfo.bg}`}>
+              <statementInfo.icon className={`w-5 h-5 ${statementInfo.color}`} />
+            </div>
+            <div>
+              <h3 className="font-semibold">Transações Extraídas</h3>
+              <p className="text-sm text-muted-foreground">
+                {statementInfo.label} - {transactions.length} transações encontradas
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-primary font-mono">
-              +{formatCurrency(totalIncome)}
-            </span>
-            <span className="text-destructive font-mono">
-              -{formatCurrency(totalExpense)}
-            </span>
+          <div className="flex items-center gap-4">
+            {statementType === "credit_card" && refundCount > 0 && (
+              <Badge variant="secondary" className="gap-1">
+                <RefreshCcw className="w-3 h-3" />
+                {refundCount} estorno{refundCount > 1 ? "s" : ""}
+              </Badge>
+            )}
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-primary font-mono">
+                +{formatCurrency(totalIncome)}
+              </span>
+              <span className="text-destructive font-mono">
+                -{formatCurrency(totalExpense)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="p-4 border-b flex items-center justify-between gap-4">
+      <div className="p-4 border-b flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Checkbox
             checked={selectedCount === transactions.length}
             onCheckedChange={(checked) => toggleAll(!!checked)}
             data-testid="checkbox-select-all"
           />
-          <span className="text-sm">Selecionar todas</span>
+          <span className="text-sm">{selectedCount} de {transactions.length} selecionadas</span>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
@@ -119,6 +141,24 @@ export function ExtractedTransactionPreview({
           </Badge>
         </div>
       </div>
+
+      {statementType === "credit_card" && (
+        <div className="p-3 bg-chart-3/5 border-b flex items-center gap-2 text-sm">
+          <CreditCard className="w-4 h-4 text-chart-3" />
+          <span className="text-muted-foreground">
+            <strong>Dica:</strong> Em faturas de cartão, estornos e cashback aparecem como receitas (valores positivos).
+          </span>
+        </div>
+      )}
+
+      {statementType === "checking" && (
+        <div className="p-3 bg-chart-2/5 border-b flex items-center gap-2 text-sm">
+          <Wallet className="w-4 h-4 text-chart-2" />
+          <span className="text-muted-foreground">
+            <strong>Dica:</strong> PIX e TEDs recebidos aparecem como receitas, enviados como despesas.
+          </span>
+        </div>
+      )}
 
       <div className="max-h-96 overflow-auto divide-y">
         {transactions.map((transaction) => (
@@ -140,9 +180,17 @@ export function ExtractedTransactionPreview({
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {transaction.description}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium truncate">
+                  {transaction.description}
+                </p>
+                {transaction.isRefund && (
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    <RefreshCcw className="w-3 h-3 mr-1" />
+                    Estorno
+                  </Badge>
+                )}
+              </div>
               {transaction.confidence < 0.7 && (
                 <p className="text-xs text-amber-500 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" />
@@ -161,8 +209,12 @@ export function ExtractedTransactionPreview({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="income">Receita</SelectItem>
-                <SelectItem value="expense">Despesa</SelectItem>
+                <SelectItem value="income">
+                  {statementType === "credit_card" ? "Estorno" : "Receita"}
+                </SelectItem>
+                <SelectItem value="expense">
+                  {statementType === "credit_card" ? "Compra" : "Despesa"}
+                </SelectItem>
               </SelectContent>
             </Select>
 

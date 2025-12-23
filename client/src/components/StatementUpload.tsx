@@ -1,16 +1,47 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X, Loader2, AlertCircle } from "lucide-react";
+import { Upload, FileText, X, Loader2, AlertCircle, Wallet, CreditCard, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+export type StatementType = "checking" | "credit_card";
 
 interface StatementUploadProps {
-  onUploadComplete: (extractedText: string, fileName: string) => void;
+  onUploadComplete: (text: string, fileName: string, statementType: StatementType) => void;
   isProcessing?: boolean;
 }
 
+const statementTypes = [
+  {
+    id: "checking" as StatementType,
+    title: "Conta Corrente",
+    description: "Movimentações bancárias: PIX, TED, DOC, pagamentos, recebimentos",
+    icon: Wallet,
+    examples: ["Salários", "PIX recebidos/enviados", "Pagamentos de boletos", "Transferências"],
+    color: "text-chart-2",
+    bgColor: "bg-chart-2/10",
+    borderColor: "border-chart-2/30",
+  },
+  {
+    id: "credit_card" as StatementType,
+    title: "Cartão de Crédito",
+    description: "Fatura do cartão: compras, parcelas, estornos e reembolsos",
+    icon: CreditCard,
+    examples: ["Compras parceladas", "Assinaturas", "Estornos", "Cashback"],
+    color: "text-chart-3",
+    bgColor: "bg-chart-3/10",
+    borderColor: "border-chart-3/30",
+  },
+];
+
 export function StatementUpload({ onUploadComplete, isProcessing }: StatementUploadProps) {
+  const [selectedType, setSelectedType] = useState<StatementType | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -28,6 +59,15 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
   }, []);
 
   const processFile = async (selectedFile: File) => {
+    if (!selectedType) {
+      toast({
+        title: "Selecione o tipo de extrato",
+        description: "Por favor, escolha se é um extrato de conta corrente ou fatura de cartão.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setFile(selectedFile);
     setUploading(true);
     setProgress(0);
@@ -44,11 +84,11 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
       clearInterval(progressInterval);
       setProgress(100);
 
-      onUploadComplete(text, selectedFile.name);
+      onUploadComplete(text, selectedFile.name, selectedType);
       
       toast({
         title: "Arquivo carregado",
-        description: "O extrato está sendo processado pela IA...",
+        description: `${selectedType === "checking" ? "Extrato de conta corrente" : "Fatura de cartão"} sendo processada...`,
       });
     } catch (error) {
       toast({
@@ -69,7 +109,7 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processFile(e.dataTransfer.files[0]);
     }
-  }, []);
+  }, [selectedType]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -82,49 +122,148 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
     setProgress(0);
   };
 
+  const resetAll = () => {
+    setFile(null);
+    setProgress(0);
+    setSelectedType(null);
+  };
+
   return (
     <Card className="p-6" data-testid="statement-upload">
-      <h3 className="text-base font-medium mb-4">Importar Extrato</h3>
-      
-      {!file ? (
-        <div
-          className={`
-            border-2 border-dashed rounded-lg p-8 text-center transition-colors
-            ${dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"}
-          `}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            id="file-upload"
-            className="hidden"
-            accept=".txt,.csv,.pdf,.ofx"
-            onChange={handleChange}
-            data-testid="input-file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="cursor-pointer flex flex-col items-center gap-3"
-          >
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <Upload className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-medium">Arraste seu extrato aqui</p>
-              <p className="text-sm text-muted-foreground">
-                ou clique para selecionar
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Formatos aceitos: PDF, CSV, TXT, OFX
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-base font-medium">Importar Extrato</h3>
+          <p className="text-sm text-muted-foreground">
+            Selecione o tipo de extrato para melhor classificação
+          </p>
+        </div>
+        {selectedType && !file && (
+          <Button variant="ghost" size="sm" onClick={resetAll}>
+            Alterar tipo
+          </Button>
+        )}
+      </div>
+
+      {!selectedType ? (
+        <div className="space-y-4">
+          <p className="text-sm font-medium">Qual tipo de extrato você deseja importar?</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {statementTypes.map((type) => (
+              <button
+                key={type.id}
+                onClick={() => setSelectedType(type.id)}
+                className={`
+                  p-5 rounded-lg border-2 text-left transition-all
+                  hover-elevate active-elevate-2
+                  ${type.borderColor} ${type.bgColor}
+                `}
+                data-testid={`button-type-${type.id}`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-3 rounded-lg bg-background/50 ${type.color}`}>
+                    <type.icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold">{type.title}</h4>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="font-medium mb-1">Exemplos:</p>
+                          <ul className="text-xs space-y-0.5">
+                            {type.examples.map((ex) => (
+                              <li key={ex}>- {ex}</li>
+                            ))}
+                          </ul>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {type.description}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="p-4 bg-muted/50 rounded-lg mt-4">
+            <p className="text-sm text-muted-foreground">
+              <strong>Por que isso é importante?</strong> Cada tipo de extrato tem padrões diferentes. 
+              Extratos bancários incluem transferências e pagamentos, enquanto faturas de cartão 
+              focam em compras e parcelas. Isso ajuda a IA a classificar melhor suas transações.
             </p>
-          </label>
+          </div>
+        </div>
+      ) : !file ? (
+        <div className="space-y-4">
+          <div className={`p-3 rounded-lg flex items-center gap-3 ${
+            selectedType === "checking" ? "bg-chart-2/10" : "bg-chart-3/10"
+          }`}>
+            {selectedType === "checking" ? (
+              <Wallet className="w-5 h-5 text-chart-2" />
+            ) : (
+              <CreditCard className="w-5 h-5 text-chart-3" />
+            )}
+            <span className="font-medium">
+              {selectedType === "checking" ? "Extrato de Conta Corrente" : "Fatura de Cartão de Crédito"}
+            </span>
+          </div>
+
+          <div
+            className={`
+              border-2 border-dashed rounded-lg p-8 text-center transition-colors
+              ${dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"}
+            `}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              accept=".txt,.csv,.pdf,.ofx"
+              onChange={handleChange}
+              data-testid="input-file-upload"
+            />
+            <label
+              htmlFor="file-upload"
+              className="cursor-pointer flex flex-col items-center gap-3"
+            >
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Upload className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">Arraste seu extrato aqui</p>
+                <p className="text-sm text-muted-foreground">
+                  ou clique para selecionar
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Formatos aceitos: PDF, CSV, TXT, OFX
+              </p>
+            </label>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
+          <div className={`p-3 rounded-lg flex items-center gap-3 ${
+            selectedType === "checking" ? "bg-chart-2/10" : "bg-chart-3/10"
+          }`}>
+            {selectedType === "checking" ? (
+              <Wallet className="w-5 h-5 text-chart-2" />
+            ) : (
+              <CreditCard className="w-5 h-5 text-chart-3" />
+            )}
+            <span className="font-medium">
+              {selectedType === "checking" ? "Extrato de Conta Corrente" : "Fatura de Cartão de Crédito"}
+            </span>
+          </div>
+
           <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-3">
               <FileText className="w-8 h-8 text-muted-foreground" />

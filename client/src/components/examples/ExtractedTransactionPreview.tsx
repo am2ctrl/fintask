@@ -13,6 +13,7 @@ const mockExtracted: ExtractedTransaction[] = [
     suggestedCategory: defaultCategories[0],
     confidence: 0.95,
     selected: true,
+    isRefund: false,
   },
   {
     id: "2",
@@ -23,6 +24,7 @@ const mockExtracted: ExtractedTransaction[] = [
     suggestedCategory: defaultCategories[4],
     confidence: 0.88,
     selected: true,
+    isRefund: false,
   },
   {
     id: "3",
@@ -33,16 +35,18 @@ const mockExtracted: ExtractedTransaction[] = [
     suggestedCategory: defaultCategories[5],
     confidence: 0.92,
     selected: true,
+    isRefund: false,
   },
   {
     id: "4",
     date: new Date(2024, 11, 15),
-    description: "PAG*JOSELITO",
+    description: "ESTORNO - LOJA ABC",
     amount: 150,
-    type: "expense",
-    suggestedCategory: defaultCategories[11],
-    confidence: 0.45,
+    type: "income",
+    suggestedCategory: defaultCategories[3],
+    confidence: 0.75,
     selected: true,
+    isRefund: true,
   },
   {
     id: "5",
@@ -53,6 +57,7 @@ const mockExtracted: ExtractedTransaction[] = [
     suggestedCategory: defaultCategories[1],
     confidence: 0.75,
     selected: true,
+    isRefund: false,
   },
 ];
 
@@ -62,6 +67,7 @@ export default function ExtractedTransactionPreviewExample() {
   return (
     <ExtractedTransactionPreview
       transactions={transactions}
+      statementType="checking"
       onTransactionsChange={setTransactions}
       onConfirm={(selected) => {
         console.log("Confirmed:", selected);
