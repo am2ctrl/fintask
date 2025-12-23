@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency } from "./SummaryCard";
-import { defaultCategories, type Category, CategoryIcon, NatureBadge } from "./CategoryBadge";
+import { defaultCategories, type Category, CategoryIcon } from "./CategoryBadge";
 import type { StatementType } from "./StatementUpload";
 import {
   Tooltip,
@@ -264,15 +264,6 @@ export function ExtractedTransactionPreview({
                       <div className="flex items-center gap-2">
                         <CatIcon className="w-4 h-4" style={{ color: cat.color }} />
                         <span>{cat.name}</span>
-                        {cat.nature && (
-                          <span className={`text-[10px] px-1 py-0.5 rounded ${
-                            cat.nature === "fixed" 
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                          }`}>
-                            {cat.nature === "fixed" ? "F" : "V"}
-                          </span>
-                        )}
                       </div>
                     </SelectItem>
                   );

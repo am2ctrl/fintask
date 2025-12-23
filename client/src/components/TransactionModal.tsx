@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, HelpCircle, Lock, Shuffle } from "lucide-react";
+import { CalendarIcon, HelpCircle, Repeat, CreditCard, CircleDot } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import {
   Dialog,
@@ -28,8 +28,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { type Category, defaultCategories, expenseNatureInfo, NatureBadge } from "./CategoryBadge";
-import type { Transaction } from "./TransactionItem";
+import { defaultCategories } from "./CategoryBadge";
+import type { Transaction, TransactionMode } from "./TransactionItem";
+import { transactionModeInfo } from "./TransactionItem";
 
 interface TransactionModalProps {
   open: boolean;
@@ -49,6 +50,9 @@ export function TransactionModal({
   const [date, setDate] = useState<Date>(new Date());
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
+  const [mode, setMode] = useState<TransactionMode>("avulsa");
+  const [installmentNumber, setInstallmentNumber] = useState("1");
+  const [installmentsTotal, setInstallmentsTotal] = useState("2");
 
   useEffect(() => {
     if (transaction) {
@@ -57,12 +61,18 @@ export function TransactionModal({
       setDate(transaction.date);
       setCategoryId(transaction.category.id);
       setDescription(transaction.description);
+      setMode(transaction.mode || "avulsa");
+      setInstallmentNumber(transaction.installmentNumber?.toString() || "1");
+      setInstallmentsTotal(transaction.installmentsTotal?.toString() || "2");
     } else {
       setType("expense");
       setAmount("");
       setDate(new Date());
       setCategoryId("");
       setDescription("");
+      setMode("avulsa");
+      setInstallmentNumber("1");
+      setInstallmentsTotal("2");
     }
   }, [transaction, open]);
 
@@ -78,23 +88,28 @@ export function TransactionModal({
       type,
       categoryId,
       description,
+      mode,
+      ...(mode === "parcelada" ? {
+        installmentNumber: parseInt(installmentNumber),
+        installmentsTotal: parseInt(installmentsTotal),
+      } : {}),
     });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" data-testid="modal-transaction">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" data-testid="modal-transaction">
         <DialogHeader>
           <DialogTitle>
             {transaction ? "Editar Transação" : "Nova Transação"}
           </DialogTitle>
           <DialogDescription>
-            Preencha os dados da transação. Passe o mouse sobre os itens para ver dicas.
+            Preencha os dados da transação. Passe o mouse sobre os ícones para ver dicas.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-5 py-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Label>Tipo de Transação</Label>
@@ -121,6 +136,7 @@ export function TransactionModal({
                 onClick={() => {
                   setType("income");
                   setCategoryId("");
+                  setMode("avulsa");
                 }}
                 data-testid="button-type-income"
               >
@@ -151,7 +167,7 @@ export function TransactionModal({
                 <TooltipContent side="top">
                   <p>Digite o valor total da transação em reais.</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Use ponto ou vírgula para centavos. Ex: 150.50
+                    Para parceladas, informe o valor da parcela.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -226,15 +242,6 @@ export function TransactionModal({
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4" style={{ color: category.color }} />
                         <span>{category.name}</span>
-                        {category.nature && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${
-                            category.nature === "fixed" 
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" 
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                          }`}>
-                            {category.nature === "fixed" ? "Fixa" : "Var"}
-                          </span>
-                        )}
                       </div>
                     </SelectItem>
                   );
@@ -250,23 +257,108 @@ export function TransactionModal({
           </div>
 
           {type === "expense" && (
-            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <Lock className="w-4 h-4 text-blue-500" />
-                Despesa Fixa
-                <Shuffle className="w-4 h-4 text-amber-500 ml-2" />
-                Despesa Variável
-              </p>
-              <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
-                <div>
-                  <p className="font-medium text-blue-600 dark:text-blue-400">Fixa:</p>
-                  <p>{expenseNatureInfo.fixed.description}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-amber-600 dark:text-amber-400">Variável:</p>
-                  <p>{expenseNatureInfo.variable.description}</p>
-                </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label>Tipo de Despesa</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-sm">
+                    <p className="font-medium mb-2">Como classificar?</p>
+                    <div className="space-y-2 text-xs">
+                      <p>
+                        <strong className="text-blue-500">Recorrente:</strong> Se repete todo mês com valor igual.
+                        Ex: aluguel R$ 2.000, Netflix R$ 55, academia R$ 150.
+                      </p>
+                      <p>
+                        <strong className="text-purple-500">Parcelada:</strong> Compra dividida em X vezes.
+                        Ex: TV 10x de R$ 300, celular 12x de R$ 200.
+                      </p>
+                      <p>
+                        <strong>Avulsa:</strong> Compra única, pontual.
+                        Ex: jantar R$ 120, presente R$ 80.
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               </div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={mode === "avulsa" ? "default" : "outline"}
+                  className="flex-col h-auto py-3 gap-1"
+                  onClick={() => setMode("avulsa")}
+                  data-testid="button-mode-avulsa"
+                >
+                  <CircleDot className="h-4 w-4" />
+                  <span className="text-xs">Avulsa</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={mode === "recorrente" ? "default" : "outline"}
+                  className="flex-col h-auto py-3 gap-1"
+                  onClick={() => setMode("recorrente")}
+                  data-testid="button-mode-recorrente"
+                >
+                  <Repeat className="h-4 w-4" />
+                  <span className="text-xs">Recorrente</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={mode === "parcelada" ? "default" : "outline"}
+                  className="flex-col h-auto py-3 gap-1"
+                  onClick={() => setMode("parcelada")}
+                  data-testid="button-mode-parcelada"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  <span className="text-xs">Parcelada</span>
+                </Button>
+              </div>
+
+              {mode !== "avulsa" && (
+                <div className="p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+                  {transactionModeInfo[mode].description}
+                </div>
+              )}
+
+              {mode === "parcelada" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="installmentNumber" className="text-xs">Parcela Atual</Label>
+                    <Input
+                      id="installmentNumber"
+                      type="number"
+                      min="1"
+                      max={installmentsTotal}
+                      value={installmentNumber}
+                      onChange={(e) => setInstallmentNumber(e.target.value)}
+                      className="font-mono"
+                      data-testid="input-installment-number"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="installmentsTotal" className="text-xs">Total de Parcelas</Label>
+                    <Input
+                      id="installmentsTotal"
+                      type="number"
+                      min="2"
+                      max="48"
+                      value={installmentsTotal}
+                      onChange={(e) => setInstallmentsTotal(e.target.value)}
+                      className="font-mono"
+                      data-testid="input-installments-total"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {mode === "recorrente" && (
+                <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 p-2 rounded">
+                  Esta despesa será lembrada para os próximos meses.
+                </p>
+              )}
             </div>
           )}
 
@@ -292,7 +384,7 @@ export function TransactionModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="resize-none"
-              rows={3}
+              rows={2}
               data-testid="input-description"
             />
           </div>
