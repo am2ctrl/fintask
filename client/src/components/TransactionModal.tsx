@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, HelpCircle, Repeat, CreditCard, CircleDot } from "lucide-react";
+import { CalendarIcon, HelpCircle, Repeat, CreditCard, CircleDot, type LucideIcon } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import {
   Dialog,
@@ -28,14 +28,23 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { defaultCategories } from "./CategoryBadge";
 import type { Transaction, TransactionMode } from "./TransactionItem";
 import { transactionModeInfo } from "./TransactionItem";
+
+interface CategoryOption {
+  id: string;
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  icon: LucideIcon;
+  description?: string;
+}
 
 interface TransactionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
+  categories?: CategoryOption[];
   onSave: (data: Omit<Transaction, "id" | "category"> & { categoryId: string }) => void;
 }
 
@@ -43,6 +52,7 @@ export function TransactionModal({
   open,
   onOpenChange,
   transaction,
+  categories = [],
   onSave,
 }: TransactionModalProps) {
   const [type, setType] = useState<"income" | "expense">("expense");
@@ -76,8 +86,8 @@ export function TransactionModal({
     }
   }, [transaction, open]);
 
-  const filteredCategories = defaultCategories.filter((c) => c.type === type);
-  const selectedCategory = defaultCategories.find(c => c.id === categoryId);
+  const filteredCategories = categories.filter((c) => c.type === type);
+  const selectedCategory = categories.find(c => c.id === categoryId);
 
   const handleSave = () => {
     if (!amount || !categoryId || !description) return;
@@ -110,17 +120,17 @@ export function TransactionModal({
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" data-testid="modal-transaction">
         <DialogHeader>
           <DialogTitle>
-            {transaction ? "Editar Transação" : "Nova Transação"}
+            {transaction ? "Editar Transacao" : "Nova Transacao"}
           </DialogTitle>
           <DialogDescription>
-            Preencha os dados da transação. Passe o mouse sobre os ícones para ver dicas.
+            Preencha os dados da transacao. Passe o mouse sobre os icones para ver dicas.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Tipo de Transação</Label>
+              <Label>Tipo de Transacao</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
@@ -128,10 +138,10 @@ export function TransactionModal({
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="font-medium">Receita vs Despesa</p>
                   <p className="text-xs mt-1">
-                    <strong>Receita:</strong> Dinheiro que entra (salário, freelance, vendas)
+                    <strong>Receita:</strong> Dinheiro que entra (salario, freelance, vendas)
                   </p>
                   <p className="text-xs mt-1">
-                    <strong>Despesa:</strong> Dinheiro que sai (contas, compras, serviços)
+                    <strong>Despesa:</strong> Dinheiro que sai (contas, compras, servicos)
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -173,7 +183,7 @@ export function TransactionModal({
                   <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>Digite o valor total da transação em reais.</p>
+                  <p>Digite o valor total da transacao em reais.</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Para parceladas, informe o valor da parcela.
                   </p>
@@ -276,7 +286,7 @@ export function TransactionModal({
                     <p className="font-medium mb-2">Como classificar?</p>
                     <div className="space-y-2 text-xs">
                       <p>
-                        <strong className="text-blue-500">Recorrente:</strong> Se repete todo mês com valor igual.
+                        <strong className="text-blue-500">Recorrente:</strong> Se repete todo mes com valor igual.
                         Ex: aluguel R$ 2.000, Netflix R$ 55, academia R$ 150.
                       </p>
                       <p>
@@ -284,7 +294,7 @@ export function TransactionModal({
                         Ex: TV 10x de R$ 300, celular 12x de R$ 200.
                       </p>
                       <p>
-                        <strong>Avulsa:</strong> Compra única, pontual.
+                        <strong>Avulsa:</strong> Compra unica, pontual.
                         Ex: jantar R$ 120, presente R$ 80.
                       </p>
                     </div>
@@ -364,7 +374,7 @@ export function TransactionModal({
 
               {mode === "recorrente" && (
                 <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 p-2 rounded">
-                  Esta despesa será lembrada para os próximos meses.
+                  Esta despesa sera lembrada para os proximos meses.
                 </p>
               )}
             </div>
@@ -372,23 +382,23 @@ export function TransactionModal({
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Descricao</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
-                  <p className="font-medium">Dica para descrição</p>
+                  <p className="font-medium">Dica para descricao</p>
                   <p className="text-xs mt-1">
-                    Seja específico! Em vez de "Compra", escreva "Supermercado Extra - compras do mês".
-                    Isso facilita encontrar a transação depois.
+                    Seja especifico! Em vez de "Compra", escreva "Supermercado Extra - compras do mes".
+                    Isso facilita encontrar a transacao depois.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </div>
             <Textarea
               id="description"
-              placeholder="Descreva a transação... Ex: Supermercado Extra - compras da semana"
+              placeholder="Descreva a transacao... Ex: Supermercado Extra - compras da semana"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="resize-none"

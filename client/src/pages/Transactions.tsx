@@ -67,20 +67,26 @@ export default function Transactions() {
     queryKey: ["/api/categories"],
   });
 
-  const categoriesMap = useMemo(() => {
-    const map = new Map<string, Category>();
-    apiCategories.forEach((c) => {
+  const categoriesList = useMemo(() => {
+    return apiCategories.map((c) => {
       const iconKey = (c.icon || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      map.set(c.id, { 
+      return { 
         id: c.id, 
         name: c.name, 
         type: c.type, 
         color: c.color,
         icon: iconMap[iconKey] || CircleDot,
-      });
+      };
+    });
+  }, [apiCategories]);
+
+  const categoriesMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    categoriesList.forEach((c) => {
+      map.set(c.id, c);
     });
     return map;
-  }, [apiCategories]);
+  }, [categoriesList]);
 
   const transactions: Transaction[] = useMemo(() => {
     return apiTransactions.map((t) => ({
@@ -232,6 +238,7 @@ export default function Transactions() {
           if (!open) setEditingTransaction(null);
         }}
         transaction={editingTransaction}
+        categories={categoriesList}
         onSave={handleSave}
       />
     </div>
