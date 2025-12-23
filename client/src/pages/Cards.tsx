@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Plus, CreditCard as CreditCardIcon, Smartphone, Users } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, CreditCard as CreditCardIcon, Smartphone, Users, Loader2 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,22 +8,74 @@ import { CreditCardDisplay } from "@/components/CreditCardDisplay";
 import { CreditCardModal } from "@/components/CreditCardModal";
 import { formatCurrency } from "@/components/SummaryCard";
 import type { CreditCardData } from "@/components/CreditCardTypes";
-import { mockCreditCards } from "@/components/CreditCardTypes";
+import { cardPurposes } from "@/components/CreditCardTypes";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface ApiCreditCard {
+  id: string;
+  name: string;
+  lastFourDigits: string;
+  cardType: "physical" | "virtual";
+  holder: string;
+  purpose: string;
+  color: string;
+  icon: string;
+  limit: number | null;
+  closingDay: number | null;
+  dueDay: number | null;
+}
+
+interface ApiTransaction {
+  id: string;
+  cardId: string | null;
+  amount: number;
+  type: "income" | "expense";
+}
 
 export default function Cards() {
-  const [cards, setCards] = useState<CreditCardData[]>(mockCreditCards);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCardData | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "physical" | "virtual">("all");
+  const { toast } = useToast();
 
-  // Mock spending data per card
-  const cardSpending: Record<string, number> = {
-    "1": 4523.50,
-    "2": 2150.00,
-    "3": 890.75,
-  };
+  const { data: apiCards = [], isLoading: loadingCards } = useQuery<ApiCreditCard[]>({
+    queryKey: ["/api/credit-cards"],
+  });
 
-  // Calculate spending per holder
+  const { data: apiTransactions = [], isLoading: loadingTransactions } = useQuery<ApiTransaction[]>({
+    queryKey: ["/api/transactions"],
+  });
+
+  const cards: CreditCardData[] = useMemo(() => {
+    return apiCards.map((c) => {
+      const purposeObj = cardPurposes.find((p) => p.id === c.purpose || p.label === c.purpose);
+      return {
+        id: c.id,
+        name: c.name,
+        lastFourDigits: c.lastFourDigits,
+        type: c.cardType,
+        holder: c.holder,
+        purpose: c.purpose,
+        color: c.color,
+        icon: purposeObj?.icon || CreditCardIcon,
+        limit: c.limit || undefined,
+        closingDay: c.closingDay || undefined,
+        dueDay: c.dueDay || undefined,
+      };
+    });
+  }, [apiCards]);
+
+  const cardSpending = useMemo(() => {
+    const spending: Record<string, number> = {};
+    apiTransactions
+      .filter((t) => t.cardId && t.type === "expense")
+      .forEach((t) => {
+        spending[t.cardId!] = (spending[t.cardId!] || 0) + t.amount;
+      });
+    return spending;
+  }, [apiTransactions]);
+
   const spendingByHolder = cards.reduce((acc, card) => {
     const spent = cardSpending[card.id] || 0;
     acc[card.holder] = (acc[card.holder] || 0) + spent;
@@ -45,19 +98,65 @@ export default function Cards() {
     }
   };
 
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/credit-cards", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      toast({ title: "Sucesso", description: "Cartao criado com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao criar cartao", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/credit-cards/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      toast({ title: "Sucesso", description: "Cartao atualizado" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao atualizar", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/credit-cards/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      toast({ title: "Sucesso", description: "Cartao removido" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao remover", variant: "destructive" });
+    },
+  });
+
   const handleSave = (data: Omit<CreditCardData, "id">) => {
+    const apiData = {
+      name: data.name,
+      lastFourDigits: data.lastFourDigits,
+      cardType: data.type,
+      holder: data.holder,
+      purpose: data.purpose,
+      color: data.color,
+      icon: data.purpose,
+      limit: data.limit || null,
+      closingDay: data.closingDay || null,
+      dueDay: data.dueDay || null,
+    };
+
     if (editingCard) {
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === editingCard.id ? { ...c, ...data } : c
-        )
-      );
+      updateMutation.mutate({ id: editingCard.id, data: apiData });
     } else {
-      const newCard: CreditCardData = {
-        id: Date.now().toString(),
-        ...data,
-      };
-      setCards((prev) => [...prev, newCard]);
+      createMutation.mutate(apiData);
     }
     setEditingCard(null);
   };
@@ -68,7 +167,7 @@ export default function Cards() {
   };
 
   const handleDelete = (id: string) => {
-    setCards((prev) => prev.filter((c) => c.id !== id));
+    deleteMutation.mutate(id);
   };
 
   const handleAddNew = () => {
@@ -76,22 +175,31 @@ export default function Cards() {
     setModalOpen(true);
   };
 
+  const isLoading = loadingCards || loadingTransactions;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Cartões de Crédito</h1>
+          <h1 className="text-2xl font-semibold">Cartoes de Credito</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie seus cartões físicos e virtuais
+            Gerencie seus cartoes fisicos e virtuais
           </p>
         </div>
         <Button onClick={handleAddNew} data-testid="button-new-card">
           <Plus className="h-4 w-4 mr-2" />
-          Novo Cartão
+          Novo Cartao
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5">
           <div className="flex items-center gap-3">
@@ -99,10 +207,10 @@ export default function Cards() {
               <CreditCardIcon className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total de Cartões</p>
+              <p className="text-sm text-muted-foreground">Total de Cartoes</p>
               <p className="text-2xl font-semibold font-mono">{cards.length}</p>
               <p className="text-xs text-muted-foreground">
-                {physicalCards.length} físicos, {virtualCards.length} virtuais
+                {physicalCards.length} fisicos, {virtualCards.length} virtuais
               </p>
             </div>
           </div>
@@ -119,7 +227,7 @@ export default function Cards() {
                 {formatCurrency(totalLimit)}
               </p>
               <p className="text-xs text-muted-foreground">
-                Usado: {formatCurrency(totalSpent)} ({((totalSpent / totalLimit) * 100).toFixed(0)}%)
+                Usado: {formatCurrency(totalSpent)} {totalLimit > 0 ? `(${((totalSpent / totalLimit) * 100).toFixed(0)}%)` : ""}
               </p>
             </div>
           </div>
@@ -138,6 +246,9 @@ export default function Cards() {
                     {holder}: <span className="font-mono">{formatCurrency(amount)}</span>
                   </span>
                 ))}
+                {Object.keys(spendingByHolder).length === 0 && (
+                  <span className="text-xs text-muted-foreground">Nenhum gasto registrado</span>
+                )}
               </div>
             </div>
           </div>
@@ -151,7 +262,7 @@ export default function Cards() {
           </TabsTrigger>
           <TabsTrigger value="physical" data-testid="tab-physical">
             <CreditCardIcon className="w-4 h-4 mr-1" />
-            Físicos ({physicalCards.length})
+            Fisicos ({physicalCards.length})
           </TabsTrigger>
           <TabsTrigger value="virtual" data-testid="tab-virtual">
             <Smartphone className="w-4 h-4 mr-1" />
@@ -175,61 +286,62 @@ export default function Cards() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <CreditCardIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum cartão encontrado</p>
+              <p>Nenhum cartao encontrado</p>
               <Button variant="ghost" onClick={handleAddNew} className="mt-2">
-                Adicionar primeiro cartão
+                Adicionar primeiro cartao
               </Button>
             </div>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Spending by Holder Section */}
-      <Card className="p-5">
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          Gastos por Membro da Família
-        </h3>
-        <div className="space-y-4">
-          {Object.entries(spendingByHolder)
-            .sort(([, a], [, b]) => b - a)
-            .map(([holder, amount]) => {
-              const percent = (amount / totalSpent) * 100;
-              const holderCards = cards.filter(c => c.holder === holder);
-              
-              return (
-                <div key={holder} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{holder}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({holderCards.length} {holderCards.length === 1 ? "cartão" : "cartões"})
-                      </span>
+      {cards.length > 0 && Object.keys(spendingByHolder).length > 0 && (
+        <Card className="p-5">
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Gastos por Membro da Familia
+          </h3>
+          <div className="space-y-4">
+            {Object.entries(spendingByHolder)
+              .sort(([, a], [, b]) => b - a)
+              .map(([holder, amount]) => {
+                const percent = totalSpent > 0 ? (amount / totalSpent) * 100 : 0;
+                const holderCards = cards.filter(c => c.holder === holder);
+                
+                return (
+                  <div key={holder} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{holder}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({holderCards.length} {holderCards.length === 1 ? "cartao" : "cartoes"})
+                        </span>
+                      </div>
+                      <span className="font-mono font-semibold">{formatCurrency(amount)}</span>
                     </div>
-                    <span className="font-mono font-semibold">{formatCurrency(amount)}</span>
+                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {holderCards.map(card => (
+                        <span
+                          key={card.id}
+                          className="text-xs px-2 py-0.5 rounded"
+                          style={{ backgroundColor: `${card.color}20`, color: card.color }}
+                        >
+                          {card.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="h-3 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {holderCards.map(card => (
-                      <span
-                        key={card.id}
-                        className="text-xs px-2 py-0.5 rounded"
-                        style={{ backgroundColor: `${card.color}20`, color: card.color }}
-                      >
-                        {card.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      </Card>
+                );
+              })}
+          </div>
+        </Card>
+      )}
 
       <CreditCardModal
         open={modalOpen}

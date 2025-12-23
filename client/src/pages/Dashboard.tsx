@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
-import { Plus, Upload } from "lucide-react";
-import { startOfMonth, endOfMonth, isWithinInterval, format } from "date-fns";
+import { Plus, Upload, Loader2 } from "lucide-react";
+import { startOfMonth, endOfMonth, isWithinInterval, format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { SummaryCard } from "@/components/SummaryCard";
 import { TransactionList } from "@/components/TransactionList";
@@ -11,107 +12,90 @@ import { IncomeExpenseChart } from "@/components/IncomeExpenseChart";
 import { CategoryPieChart } from "@/components/CategoryPieChart";
 import { MonthCalendar } from "@/components/MonthCalendar";
 import { MonthlyOverview } from "@/components/MonthlyOverview";
-import { defaultCategories, type Category } from "@/components/CategoryBadge";
 import type { Transaction } from "@/components/TransactionItem";
+import type { Category } from "@/components/CategoryBadge";
+import { CircleDot, Banknote, Briefcase, TrendingUp, Utensils, Car, Home, Heart, GraduationCap, Gamepad2, Receipt, ShoppingBag, type LucideIcon } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
-// todo: remove mock data
-const mockTransactions: Transaction[] = [
-  {
-    id: "1",
-    date: new Date(2024, 11, 20),
-    amount: 8500,
-    type: "income",
-    category: defaultCategories[0],
-    description: "Salário dezembro",
-  },
-  {
-    id: "2",
-    date: new Date(2024, 11, 19),
-    amount: 450,
-    type: "expense",
-    category: defaultCategories[4],
-    description: "Supermercado semanal",
-  },
-  {
-    id: "3",
-    date: new Date(2024, 11, 18),
-    amount: 1200,
-    type: "expense",
-    category: defaultCategories[6],
-    description: "Aluguel apartamento",
-  },
-  {
-    id: "4",
-    date: new Date(2024, 11, 15),
-    amount: 2500,
-    type: "income",
-    category: defaultCategories[1],
-    description: "Projeto freelance",
-  },
-  {
-    id: "5",
-    date: new Date(2024, 11, 12),
-    amount: 180,
-    type: "expense",
-    category: defaultCategories[5],
-    description: "Uber mensal",
-  },
-  {
-    id: "6",
-    date: new Date(2024, 11, 10),
-    amount: 350,
-    type: "expense",
-    category: defaultCategories[9],
-    description: "Cinema e jantar",
-  },
-  {
-    id: "7",
-    date: new Date(2024, 11, 5),
-    amount: 520,
-    type: "expense",
-    category: defaultCategories[4],
-    description: "Supermercado mensal",
-  },
-  {
-    id: "8",
-    date: new Date(2024, 10, 25),
-    amount: 8500,
-    type: "income",
-    category: defaultCategories[0],
-    description: "Salário novembro",
-  },
-  {
-    id: "9",
-    date: new Date(2024, 10, 20),
-    amount: 1200,
-    type: "expense",
-    category: defaultCategories[6],
-    description: "Aluguel novembro",
-  },
-  {
-    id: "10",
-    date: new Date(2024, 10, 15),
-    amount: 680,
-    type: "expense",
-    category: defaultCategories[4],
-    description: "Supermercado novembro",
-  },
-];
+const iconMap: Record<string, LucideIcon> = {
+  banknote: Banknote,
+  briefcase: Briefcase,
+  trendingup: TrendingUp,
+  utensils: Utensils,
+  car: Car,
+  home: Home,
+  heart: Heart,
+  graduationcap: GraduationCap,
+  gamepad2: Gamepad2,
+  receipt: Receipt,
+  shoppingbag: ShoppingBag,
+};
+import { useToast } from "@/hooks/use-toast";
 
-const mockChartData = [
-  { month: "Jul", income: 6500, expense: 4200 },
-  { month: "Ago", income: 7200, expense: 5100 },
-  { month: "Set", income: 8000, expense: 4800 },
-  { month: "Out", income: 7500, expense: 5500 },
-  { month: "Nov", income: 8500, expense: 5000 },
-  { month: "Dez", income: 11000, expense: 5200 },
-];
+interface ApiTransaction {
+  id: string;
+  date: string;
+  amount: number;
+  type: "income" | "expense";
+  categoryId: string;
+  description: string;
+  mode?: string;
+  installmentNumber?: number | null;
+  installmentsTotal?: number | null;
+  cardId?: string | null;
+}
+
+interface ApiCategory {
+  id: string;
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  icon: string | null;
+}
 
 export default function Dashboard() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const { toast } = useToast();
+
+  const { data: apiTransactions = [], isLoading: loadingTransactions } = useQuery<ApiTransaction[]>({
+    queryKey: ["/api/transactions"],
+  });
+
+  const { data: apiCategories = [], isLoading: loadingCategories } = useQuery<ApiCategory[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  const categoriesMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    apiCategories.forEach((c) => {
+      const iconKey = (c.icon || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      map.set(c.id, { 
+        id: c.id, 
+        name: c.name, 
+        type: c.type, 
+        color: c.color,
+        icon: iconMap[iconKey] || CircleDot,
+      });
+    });
+    return map;
+  }, [apiCategories]);
+
+  const transactions: Transaction[] = useMemo(() => {
+    return apiTransactions.map((t) => ({
+      id: t.id,
+      date: new Date(t.date),
+      amount: t.amount,
+      type: t.type,
+      category: categoriesMap.get(t.categoryId) || { id: t.categoryId, name: "Outros", type: t.type, color: "#6b7280", icon: CircleDot },
+      description: t.description,
+      mode: t.mode as "avulsa" | "recorrente" | "parcelada" | undefined,
+      installmentNumber: t.installmentNumber ?? undefined,
+      installmentsTotal: t.installmentsTotal ?? undefined,
+      cardId: t.cardId ?? undefined,
+    }));
+  }, [apiTransactions, categoriesMap]);
 
   const monthInterval = useMemo(() => ({
     start: startOfMonth(selectedMonth),
@@ -133,6 +117,22 @@ export default function Dashboard() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const balance = totalIncome - totalExpense;
+
+  const chartData = useMemo(() => {
+    const months: { month: string; income: number; expense: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = subMonths(new Date(), i);
+      const start = startOfMonth(date);
+      const end = endOfMonth(date);
+      const monthTxs = transactions.filter((t) => isWithinInterval(t.date, { start, end }));
+      months.push({
+        month: format(date, "MMM", { locale: ptBR }),
+        income: monthTxs.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0),
+        expense: monthTxs.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0),
+      });
+    }
+    return months;
+  }, [transactions]);
 
   const categoryData = useMemo(() => {
     const expensesByCategory = new Map<string, { name: string; value: number; color: string }>();
@@ -157,27 +157,52 @@ export default function Dashboard() {
       .slice(0, 6);
   }, [monthTransactions]);
 
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/transactions", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({ title: "Sucesso", description: "Transacao criada com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao criar transacao", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/transactions/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({ title: "Sucesso", description: "Transacao atualizada" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao atualizar", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/transactions/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({ title: "Sucesso", description: "Transacao removida" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao remover", variant: "destructive" });
+    },
+  });
+
   const handleSave = (data: any) => {
-    const category = defaultCategories.find((c) => c.id === data.categoryId)!;
-    
     if (editingTransaction) {
-      setTransactions((prev) =>
-        prev.map((t) =>
-          t.id === editingTransaction.id
-            ? { ...t, ...data, category }
-            : t
-        )
-      );
+      updateMutation.mutate({ id: editingTransaction.id, data });
     } else {
-      const newTransaction: Transaction = {
-        id: Date.now().toString(),
-        date: data.date,
-        amount: data.amount,
-        type: data.type,
-        category,
-        description: data.description,
-      };
-      setTransactions((prev) => [newTransaction, ...prev]);
+      createMutation.mutate(data);
     }
     setEditingTransaction(null);
   };
@@ -188,8 +213,18 @@ export default function Dashboard() {
   };
 
   const handleDelete = (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+    deleteMutation.mutate(id);
   };
+
+  const isLoading = loadingTransactions || loadingCategories;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -197,7 +232,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Acompanhe suas finanças em um só lugar
+            Acompanhe suas financas em um so lugar
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -213,19 +248,19 @@ export default function Dashboard() {
           </Button>
           <Button onClick={() => setModalOpen(true)} data-testid="button-new-transaction">
             <Plus className="h-4 w-4 mr-2" />
-            Nova Transação
+            Nova Transacao
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <SummaryCard type="income" value={totalIncome} trend={12.5} label="Receitas" />
-        <SummaryCard type="expense" value={totalExpense} trend={-3.2} label="Despesas" />
-        <SummaryCard type="balance" value={balance} trend={25.8} label="Saldo" />
+        <SummaryCard type="income" value={totalIncome} label="Receitas" />
+        <SummaryCard type="expense" value={totalExpense} label="Despesas" />
+        <SummaryCard type="balance" value={balance} label="Saldo" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <IncomeExpenseChart data={mockChartData} />
+        <IncomeExpenseChart data={chartData} />
         <MonthlyOverview
           month={selectedMonth}
           transactions={transactions}
@@ -240,7 +275,7 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">
-              Transações de {format(selectedMonth, "MMMM", { locale: ptBR })}
+              Transacoes de {format(selectedMonth, "MMMM", { locale: ptBR })}
             </h2>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/transacoes" data-testid="link-view-all">Ver todas</Link>
