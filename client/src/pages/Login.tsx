@@ -7,18 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Wallet } from "lucide-react";
+import { Loader2, Wallet, Lock } from "lucide-react";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { signInWithEmail, signUpWithEmail, user } = useAuth();
+  const { signInWithEmail, user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupName, setSignupName] = useState("");
 
   if (user) {
     setLocation("/");
@@ -41,25 +38,6 @@ export default function Login() {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await signUpWithEmail(signupEmail, signupPassword, signupName);
-    setLoading(false);
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro ao criar conta",
-        description: error.message,
-      });
-    } else {
-      toast({
-        title: "Conta criada!",
-        description: "Verifique seu email para confirmar a conta.",
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
@@ -76,7 +54,9 @@ export default function Login() {
           <Tabs defaultValue="login">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login" data-testid="tab-login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup" data-testid="tab-signup">Criar Conta</TabsTrigger>
+              <TabsTrigger value="signup" disabled data-testid="tab-signup" className="opacity-50 cursor-not-allowed">
+                Criar Conta
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
@@ -111,48 +91,19 @@ export default function Login() {
               </form>
             </TabsContent>
             <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Seu nome"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    data-testid="input-signup-name"
-                  />
+              <div className="text-center py-8 space-y-4">
+                <div className="flex justify-center">
+                  <div className="p-4 rounded-full bg-muted">
+                    <Lock className="w-8 h-8 text-muted-foreground" />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                    required
-                    data-testid="input-signup-email"
-                  />
+                  <p className="font-medium text-foreground">Cadastro restrito</p>
+                  <p className="text-sm text-muted-foreground">
+                    Este aplicativo e de uso privado. Novas contas so podem ser criadas por convite do administrador.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Minimo 6 caracteres"
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    minLength={6}
-                    required
-                    data-testid="input-signup-password"
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading} data-testid="button-signup">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Criar Conta
-                </Button>
-              </form>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
