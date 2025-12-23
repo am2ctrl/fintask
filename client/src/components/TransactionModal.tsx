@@ -82,16 +82,24 @@ export function TransactionModal({
   const handleSave = () => {
     if (!amount || !categoryId || !description) return;
     
+    const parsedInstallmentNumber = parseInt(installmentNumber) || 1;
+    const parsedInstallmentsTotal = parseInt(installmentsTotal) || 2;
+    
+    if (mode === "parcelada") {
+      if (parsedInstallmentsTotal < 2 || parsedInstallmentsTotal > 48) return;
+      if (parsedInstallmentNumber < 1 || parsedInstallmentNumber > parsedInstallmentsTotal) return;
+    }
+    
     onSave({
       date,
       amount: parseFloat(amount),
       type,
       categoryId,
       description,
-      mode,
-      ...(mode === "parcelada" ? {
-        installmentNumber: parseInt(installmentNumber),
-        installmentsTotal: parseInt(installmentsTotal),
+      mode: type === "expense" ? mode : "avulsa",
+      ...(mode === "parcelada" && type === "expense" ? {
+        installmentNumber: parsedInstallmentNumber,
+        installmentsTotal: parsedInstallmentsTotal,
       } : {}),
     });
     onOpenChange(false);
