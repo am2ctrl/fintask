@@ -17,6 +17,8 @@ export function CategoryCard({
   onEdit,
   onDelete,
 }: CategoryCardProps) {
+  const Icon = category.icon;
+  
   return (
     <Card
       className="group p-4 flex items-center justify-between gap-4"
@@ -27,10 +29,7 @@ export function CategoryCard({
           className="w-10 h-10 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: `${category.color}20` }}
         >
-          <div
-            className="w-4 h-4 rounded-full"
-            style={{ backgroundColor: category.color }}
-          />
+          <Icon className="w-5 h-5" style={{ color: category.color }} />
         </div>
         <div>
           <p className="font-medium">{category.name}</p>

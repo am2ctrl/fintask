@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, CircleDot, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryCard } from "@/components/CategoryCard";
@@ -15,12 +15,12 @@ export default function Categories() {
   const incomeCategories = categories.filter((c) => c.type === "income");
   const expenseCategories = categories.filter((c) => c.type === "expense");
 
-  const handleSave = (data: { name: string; color: string; type: "income" | "expense" }) => {
+  const handleSave = (data: { name: string; color: string; type: "income" | "expense"; icon: LucideIcon }) => {
     if (editingCategory) {
       setCategories((prev) =>
         prev.map((c) =>
           c.id === editingCategory.id
-            ? { ...c, name: data.name, color: data.color }
+            ? { ...c, name: data.name, color: data.color, icon: data.icon }
             : c
         )
       );
@@ -30,6 +30,7 @@ export default function Categories() {
         name: data.name,
         type: data.type,
         color: data.color,
+        icon: data.icon,
       };
       setCategories((prev) => [...prev, newCategory]);
     }
