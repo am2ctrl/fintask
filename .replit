@@ -44,3 +44,5 @@ integrations = ["javascript_mem_db:1.0.0", "javascript_openai_ai_integrations:2.
 [userenv]
 
 [userenv.shared]
+VITE_SUPABASE_URL = "https://elovgfytfbglvzgrnznj.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsb3ZnZnl0ZmJnbHZ6Z3Juem5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAwODczNzgsImV4cCI6MjA3NTY2MzM3OH0.MqWB6t_Svqt-jFVhzsCDg9dtWO05QtF7yR7sivpYjeg"
