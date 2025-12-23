@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./supabaseStorage";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -42,6 +42,8 @@ Analise o seguinte texto e extraia todas as transações. Para cada transação,
 4. O tipo ("income" para receita/crédito/estorno ou "expense" para despesa/débito/compra)
 5. A categoria sugerida (escolha entre: Salário, Freelance, Investimentos, Outros, Alimentação, Transporte, Moradia, Saúde, Educação, Lazer, Contas, Compras)
 6. Um nível de confiança de 0 a 1 na classificação
+7. O modo da transação: "avulsa" (compra única), "recorrente" (mensalidade fixa como Netflix, aluguel), ou "parcelada" (compra dividida em parcelas)
+8. Se for parcelada, identifique o número da parcela atual e o total de parcelas
 
 Regras de classificação:
 - PIX RECEBIDO, TED RECEBIDO, SALARIO, CREDITO = income
@@ -53,6 +55,11 @@ Regras de classificação:
 - FARMACIA, DROGARIA, HOSPITAL = Saúde
 - ALUGUEL, CONDOMINIO, LUZ, AGUA, GAS = Moradia ou Contas
 
+Regras de modo:
+- NETFLIX, SPOTIFY, AMAZON PRIME, DISNEY+, ACADEMIA, PLANO, MENSALIDADE = recorrente
+- Texto contém "PARCELA", "X/Y", "1/12", "2/10" etc = parcelada (extraia número atual e total)
+- Outros = avulsa
+
 Retorne APENAS um JSON válido no seguinte formato:
 {
   "transactions": [
@@ -62,7 +69,21 @@ Retorne APENAS um JSON válido no seguinte formato:
       "amount": 150.50,
       "type": "expense",
       "category": "Alimentação",
-      "confidence": 0.95
+      "confidence": 0.95,
+      "mode": "avulsa",
+      "installmentNumber": null,
+      "installmentsTotal": null
+    },
+    {
+      "date": "2024-12-10",
+      "description": "CASAS BAHIA PARCELA 3/10",
+      "amount": 299.90,
+      "type": "expense",
+      "category": "Compras",
+      "confidence": 0.98,
+      "mode": "parcelada",
+      "installmentNumber": 3,
+      "installmentsTotal": 10
     }
   ]
 }
@@ -89,7 +110,7 @@ ${text.substring(0, 10000)}`;
 
   app.post("/api/transactions/batch", async (req, res) => {
     try {
-      const { transactions } = req.body;
+      const { transactions, userId } = req.body;
 
       if (!Array.isArray(transactions)) {
         return res.status(400).json({ error: "Invalid transactions array" });
@@ -103,7 +124,11 @@ ${text.substring(0, 10000)}`;
             type: t.type,
             categoryId: t.categoryId,
             description: t.description,
-          })
+            mode: t.mode || "avulsa",
+            installmentNumber: t.installmentNumber || null,
+            installmentsTotal: t.installmentsTotal || null,
+            cardId: t.cardId || null,
+          }, userId)
         )
       );
 
@@ -116,7 +141,8 @@ ${text.substring(0, 10000)}`;
 
   app.get("/api/transactions", async (req, res) => {
     try {
-      const transactions = await storage.getAllTransactions();
+      const userId = req.query.userId as string | undefined;
+      const transactions = await storage.getAllTransactions(userId);
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -132,7 +158,11 @@ ${text.substring(0, 10000)}`;
         type: req.body.type,
         categoryId: req.body.categoryId,
         description: req.body.description,
-      });
+        mode: req.body.mode || "avulsa",
+        installmentNumber: req.body.installmentNumber || null,
+        installmentsTotal: req.body.installmentsTotal || null,
+        cardId: req.body.cardId || null,
+      }, req.body.userId);
       res.json(transaction);
     } catch (error) {
       console.error("Error creating transaction:", error);
@@ -148,6 +178,10 @@ ${text.substring(0, 10000)}`;
         type: req.body.type,
         categoryId: req.body.categoryId,
         description: req.body.description,
+        mode: req.body.mode,
+        installmentNumber: req.body.installmentNumber,
+        installmentsTotal: req.body.installmentsTotal,
+        cardId: req.body.cardId,
       });
       res.json(transaction);
     } catch (error) {
@@ -168,11 +202,115 @@ ${text.substring(0, 10000)}`;
 
   app.get("/api/categories", async (req, res) => {
     try {
-      const categories = await storage.getAllCategories();
+      const userId = req.query.userId as string | undefined;
+      const categories = await storage.getAllCategories(userId);
       res.json(categories);
     } catch (error) {
       console.error("Error fetching categories:", error);
       res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    try {
+      const category = await storage.createCategory({
+        name: req.body.name,
+        type: req.body.type,
+        color: req.body.color,
+        icon: req.body.icon || null,
+      }, req.body.userId);
+      res.json(category);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ error: "Failed to create category" });
+    }
+  });
+
+  app.patch("/api/categories/:id", async (req, res) => {
+    try {
+      const category = await storage.updateCategory(req.params.id, {
+        name: req.body.name,
+        type: req.body.type,
+        color: req.body.color,
+        icon: req.body.icon,
+      });
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ error: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      await storage.deleteCategory(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ error: "Failed to delete category" });
+    }
+  });
+
+  app.get("/api/credit-cards", async (req, res) => {
+    try {
+      const userId = req.query.userId as string | undefined;
+      const cards = await storage.getAllCreditCards(userId);
+      res.json(cards);
+    } catch (error) {
+      console.error("Error fetching credit cards:", error);
+      res.status(500).json({ error: "Failed to fetch credit cards" });
+    }
+  });
+
+  app.post("/api/credit-cards", async (req, res) => {
+    try {
+      const card = await storage.createCreditCard({
+        name: req.body.name,
+        lastFourDigits: req.body.lastFourDigits,
+        cardType: req.body.cardType,
+        holder: req.body.holder,
+        purpose: req.body.purpose,
+        color: req.body.color,
+        icon: req.body.icon,
+        limit: req.body.limit || null,
+        closingDay: req.body.closingDay || null,
+        dueDay: req.body.dueDay || null,
+      }, req.body.userId);
+      res.json(card);
+    } catch (error) {
+      console.error("Error creating credit card:", error);
+      res.status(500).json({ error: "Failed to create credit card" });
+    }
+  });
+
+  app.patch("/api/credit-cards/:id", async (req, res) => {
+    try {
+      const card = await storage.updateCreditCard(req.params.id, {
+        name: req.body.name,
+        lastFourDigits: req.body.lastFourDigits,
+        cardType: req.body.cardType,
+        holder: req.body.holder,
+        purpose: req.body.purpose,
+        color: req.body.color,
+        icon: req.body.icon,
+        limit: req.body.limit,
+        closingDay: req.body.closingDay,
+        dueDay: req.body.dueDay,
+      });
+      res.json(card);
+    } catch (error) {
+      console.error("Error updating credit card:", error);
+      res.status(500).json({ error: "Failed to update credit card" });
+    }
+  });
+
+  app.delete("/api/credit-cards/:id", async (req, res) => {
+    try {
+      await storage.deleteCreditCard(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting credit card:", error);
+      res.status(500).json({ error: "Failed to delete credit card" });
     }
   });
 
