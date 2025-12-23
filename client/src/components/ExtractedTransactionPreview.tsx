@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency } from "./SummaryCard";
-import { defaultCategories, type Category } from "./CategoryBadge";
+import { defaultCategories, type Category, CategoryIcon } from "./CategoryBadge";
 import type { StatementType } from "./StatementUpload";
 
 export interface ExtractedTransaction {
@@ -222,15 +222,10 @@ export function ExtractedTransactionPreview({
               value={transaction.suggestedCategory.id}
               onValueChange={(v) => updateCategory(transaction.id, v)}
             >
-              <SelectTrigger className="w-40" data-testid={`select-category-${transaction.id}`}>
+              <SelectTrigger className="w-44" data-testid={`select-category-${transaction.id}`}>
                 <SelectValue>
                   <div className="flex items-center gap-2">
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{
-                        backgroundColor: transaction.suggestedCategory.color,
-                      }}
-                    />
+                    <CategoryIcon category={transaction.suggestedCategory} size="sm" />
                     <span className="truncate">
                       {transaction.suggestedCategory.name}
                     </span>
@@ -238,17 +233,17 @@ export function ExtractedTransactionPreview({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {filteredCategories(transaction.type).map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      {cat.name}
-                    </div>
-                  </SelectItem>
-                ))}
+                {filteredCategories(transaction.type).map((cat) => {
+                  const CatIcon = cat.icon;
+                  return (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <CatIcon className="w-4 h-4" style={{ color: cat.color }} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
 
