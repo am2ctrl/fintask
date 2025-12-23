@@ -9,6 +9,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import * as pdfjsLib from "pdfjs-dist";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export type StatementType = "checking" | "credit_card";
 
@@ -58,6 +61,23 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
     }
   }, []);
 
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = "";
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(" ");
+      fullText += pageText + "\n";
+    }
+    
+    return fullText;
+  };
+
   const processFile = async (selectedFile: File) => {
     if (!selectedType) {
       toast({
@@ -72,17 +92,33 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
     setUploading(true);
     setProgress(0);
 
+    let progressInterval: NodeJS.Timeout | null = null;
+    
     try {
-      const text = await selectedFile.text();
+      let text: string;
       
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setProgress((prev) => Math.min(prev + 10, 90));
       }, 100);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (selectedFile.name.toLowerCase().endsWith(".pdf")) {
+        text = await extractTextFromPDF(selectedFile);
+      } else {
+        text = await selectedFile.text();
+      }
       
-      clearInterval(progressInterval);
       setProgress(100);
+
+      if (!text || text.trim().length < 50) {
+        toast({
+          title: "Arquivo vazio ou ilegível",
+          description: "Não foi possível extrair texto do arquivo. Verifique se o PDF não está protegido ou escaneado.",
+          variant: "destructive",
+        });
+        setFile(null);
+        setProgress(0);
+        return;
+      }
 
       onUploadComplete(text, selectedFile.name, selectedType);
       
@@ -91,12 +127,18 @@ export function StatementUpload({ onUploadComplete, isProcessing }: StatementUpl
         description: `${selectedType === "checking" ? "Extrato de conta corrente" : "Fatura de cartão"} sendo processada...`,
       });
     } catch (error) {
+      console.error("Error processing file:", error);
       toast({
         title: "Erro ao carregar arquivo",
         description: "Não foi possível ler o arquivo. Tente novamente.",
         variant: "destructive",
       });
+      setFile(null);
+      setProgress(0);
     } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setUploading(false);
     }
   };
