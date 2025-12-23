@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { StatementUpload, type StatementType } from "@/components/StatementUpload";
 import {
@@ -8,7 +9,46 @@ import {
 import { defaultCategories, type Category } from "@/components/CategoryBadge";
 import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
-import { Wallet, CreditCard, Upload, CheckCircle2, FileSearch, Sparkles } from "lucide-react";
+import { Wallet, CreditCard, Upload, CheckCircle2, FileSearch, Sparkles, Loader2 } from "lucide-react";
+interface DbCategory {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  icon: string | null;
+}
+import { 
+  Banknote, 
+  Briefcase, 
+  TrendingUp, 
+  CircleDot,
+  Utensils, 
+  Car, 
+  Home, 
+  Heart, 
+  GraduationCap, 
+  Gamepad2, 
+  Receipt, 
+  ShoppingBag,
+  type LucideIcon
+} from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  "Banknote": Banknote,
+  "Briefcase": Briefcase,
+  "TrendingUp": TrendingUp,
+  "Plus": CircleDot,
+  "Utensils": Utensils,
+  "Car": Car,
+  "Home": Home,
+  "Heart": Heart,
+  "GraduationCap": GraduationCap,
+  "Gamepad2": Gamepad2,
+  "Receipt": Receipt,
+  "ShoppingBag": ShoppingBag,
+  "Laptop": Briefcase,
+  "MoreHorizontal": CircleDot,
+};
 
 type ImportStep = "upload" | "preview" | "complete";
 
@@ -18,6 +58,37 @@ export default function Import() {
   const [statementType, setStatementType] = useState<StatementType>("checking");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+
+  const { data: dbCategories = [], isLoading: loadingCategories } = useQuery<DbCategory[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  const mapDbCategoryToLocal = (dbCat: DbCategory): Category => ({
+    id: dbCat.id,
+    name: dbCat.name,
+    type: dbCat.type as "income" | "expense",
+    color: dbCat.color,
+    icon: iconMap[dbCat.icon || ""] || CircleDot,
+  });
+
+  const findCategoryByName = (name: string, type: string): Category => {
+    const normalizedName = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    const dbMatch = dbCategories.find(c => {
+      const catName = c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
+    });
+    
+    if (dbMatch) return mapDbCategoryToLocal(dbMatch);
+    
+    const typeMatch = dbCategories.find(c => c.type === type);
+    if (typeMatch) return mapDbCategoryToLocal(typeMatch);
+    
+    const fallback = dbCategories[0];
+    if (fallback) return mapDbCategoryToLocal(fallback);
+    
+    return defaultCategories.find(c => c.type === type) || defaultCategories[4];
+  };
 
   const handleUploadComplete = async (text: string, fileName: string, type: StatementType) => {
     setStatementType(type);
@@ -34,9 +105,7 @@ export default function Import() {
       
       const transactions: ExtractedTransaction[] = data.transactions.map(
         (t: any, index: number) => {
-          const category = defaultCategories.find(
-            (c) => c.name.toLowerCase() === t.category?.toLowerCase()
-          ) || defaultCategories.find((c) => c.type === t.type) || defaultCategories[4];
+          const category = findCategoryByName(t.category || "", t.type);
 
           const isRefund = type === "credit_card" && t.type === "income";
 

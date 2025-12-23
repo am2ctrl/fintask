@@ -36,12 +36,24 @@ export async function registerRoutes(
 
 ${statementContext}
 
-Analise o seguinte texto e extraia todas as transações. Para cada transação, identifique:
+IMPORTANTE: Você DEVE extrair ABSOLUTAMENTE TODAS as transações do extrato, sem exceção. Isso inclui:
+- Rendimentos de investimento (RENTAB.INVEST, CDB, POUPANÇA, etc.) - mesmo valores pequenos como R$0,01
+- Transferências PIX (enviadas e recebidas)
+- Tarifas bancárias
+- Pagamentos de cartão de crédito
+- IOF, taxas e encargos
+- Aplicações e resgates
+- TED, DOC, boletos
+- Qualquer movimentação financeira que apareça no extrato
+
+NÃO IGNORE nenhuma linha de transação. O usuário precisa ver TODAS as movimentações para decidir o que importar.
+
+Para cada transação, identifique:
 1. A data (formato YYYY-MM-DD)
-2. A descrição original
+2. A descrição original COMPLETA
 3. O valor (número positivo, sem sinal)
 4. O tipo ("income" para receita/crédito/estorno ou "expense" para despesa/débito/compra)
-5. A categoria sugerida (escolha entre: Salário, Freelance, Investimentos, Outros, Alimentação, Transporte, Moradia, Saúde, Educação, Lazer, Contas, Compras)
+5. A categoria sugerida (escolha entre: Salario, Freelance, Investimentos, Outros, Alimentacao, Transporte, Moradia, Saude, Educacao, Lazer, Contas, Compras)
 6. Um nível de confiança de 0 a 1 na classificação
 7. O modo da transação: "avulsa" (compra única), "recorrente" (mensalidade fixa como Netflix, aluguel), ou "parcelada" (compra dividida em parcelas)
 8. Se for parcelada, identifique o número da parcela atual e o total de parcelas
