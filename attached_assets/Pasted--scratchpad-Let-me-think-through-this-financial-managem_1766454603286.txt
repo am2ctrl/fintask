@@ -1,0 +1,337 @@
+<scratchpad>
+Let me think through this financial management web app called "fintask":
+Understanding the requirements:
+
+Family financial management app
+No login needed initially (single user/personal use)
+Use Supabase or Neon for database
+Portuguese language context (gestao financeira familiar)
+
+Essential MVP features:
+
+Track income and expenses (transactions)
+Categorize transactions
+View balance/summary
+View transaction history
+Add/edit/delete transactions
+Basic filtering by date/category
+Visual dashboard with charts
+
+Nice-to-have (post-MVP):
+
+Budget planning
+Recurring transactions
+Multiple accounts
+Reports and analytics
+Export data
+Multi-user/family member support
+Goals/savings tracking
+
+Data structure needed:
+
+Transactions (id, date, amount, type, category, description)
+Categories (id, name, type, color/icon)
+Accounts (for future, but could start simple with single account)
+Maybe a Settings table for user preferences
+
+User workflows:
+
+View dashboard with current balance and recent transactions
+Add new transaction (income or expense)
+View all transactions with filters
+Edit/delete existing transactions
+View summary by category
+View charts/analytics
+
+Technology considerations:
+
+Since no login needed, can use simpler architecture
+Supabase is great choice - provides PostgreSQL + real-time + easy SDK
+For frontend: React or Next.js for modern, fast development
+Could use Vite + React for simpler setup, or Next.js for better structure
+UI library: Tailwind CSS + shadcn/ui or similar for rapid development
+Charts: recharts or chart.js
+</scratchpad>
+
+
+<plan>
+Plano Técnico - FinTask (Gestão Financeira Familiar)
+1. MVP Feature List
+Features Essenciais (Prioridade Alta)
+
+Dashboard Principal
+
+Exibir saldo atual (receitas - despesas)
+Resumo do mês atual
+Gráfico de receitas vs despesas
+Lista de transações recentes
+
+
+Gerenciamento de Transações
+
+Adicionar transação (receita ou despesa)
+Editar transação existente
+Excluir transação
+Campos: data, valor, categoria, descrição, tipo (receita/despesa)
+
+
+Categorias
+
+Lista de categorias pré-definidas
+Separação entre categorias de receita e despesa
+Capacidade de adicionar/editar categorias personalizadas
+
+
+Visualização e Filtros
+
+Listar todas as transações
+Filtrar por período (mês, semana, personalizado)
+Filtrar por categoria
+Filtrar por tipo (receita/despesa)
+Ordenar por data, valor
+
+
+Resumo por Categoria
+
+Total gasto/recebido por categoria
+Gráfico de pizza mostrando distribuição
+
+
+
+Features Futuras (Pós-MVP)
+
+Contas múltiplas (conta corrente, poupança, cartão)
+Transações recorrentes
+Orçamento por categoria
+Metas de economia
+Relatórios avançados
+Exportação de dados (CSV/PDF)
+Sistema de login para múltiplos usuários
+
+2. Technology Stack
+Frontend
+Next.js 14+ (App Router)
+
+Framework React moderno com SSR/SSG
+Excelente DX (Developer Experience)
+Roteamento file-based
+API routes integradas (se necessário)
+Otimização automática de performance
+
+UI Libraries:
+
+Tailwind CSS: Estilização rápida e responsiva
+shadcn/ui: Componentes modernos e acessíveis
+Lucide React: Ícones
+Recharts: Gráficos e visualizações
+date-fns: Manipulação de datas
+React Hook Form + Zod: Formulários e validação
+
+Backend/Database
+Supabase (Recomendado)
+
+PostgreSQL gerenciado
+Cliente JavaScript/TypeScript fácil de usar
+Real-time subscriptions (útil para atualizações)
+Row Level Security (para quando adicionar auth)
+Interface de administração embutida
+Gratuito para começar com limites generosos
+
+Alternativa: Neon também é excelente, mas Supabase oferece mais features prontas.
+Hospedagem
+
+Vercel: Deploy automático do Next.js, gratuito para hobby projects
+
+3. Data Model
+Tabela: transactions
+sqlCopy- id: UUID (PK)
+- date: DATE (data da transação)
+- amount: DECIMAL(10,2) (valor)
+- type: ENUM('income', 'expense') (tipo)
+- category_id: UUID (FK -> categories)
+- description: TEXT (descrição)
+- created_at: TIMESTAMP
+- updated_at: TIMESTAMP
+Tabela: categories
+sqlCopy- id: UUID (PK)
+- name: VARCHAR(100) (nome da categoria)
+- type: ENUM('income', 'expense') (tipo)
+- color: VARCHAR(7) (cor hex, ex: #FF5733)
+- icon: VARCHAR(50) (nome do ícone)
+- is_default: BOOLEAN (categoria padrão do sistema)
+- created_at: TIMESTAMP
+Tabela: accounts (Futuro)
+sqlCopy- id: UUID (PK)
+- name: VARCHAR(100)
+- type: VARCHAR(50) (corrente, poupança, etc)
+- initial_balance: DECIMAL(10,2)
+- created_at: TIMESTAMP
+Categorias Padrão (Seed Data)
+Receitas:
+
+Salário
+Freelance
+Investimentos
+Outros
+
+Despesas:
+
+Alimentação
+Transporte
+Moradia
+Saúde
+Educação
+Lazer
+Contas
+Compras
+Outros
+
+4. User Interface Flow
+Tela 1: Dashboard (Home)
+Copy[Header: FinTask + Navegação]
+
+[Cards de Resumo]
+- Total Receitas (mês atual) - Verde
+- Total Despesas (mês atual) - Vermelho  
+- Saldo (receitas - despesas) - Azul
+
+[Gráfico de Linha/Barras]
+- Receitas vs Despesas dos últimos 6 meses
+
+[Gráfico de Pizza]
+- Despesas por categoria (mês atual)
+
+[Transações Recentes]
+- Lista das últimas 10 transações
+- Botão "Ver Todas"
+
+[Botão Flutuante]
+- "+ Nova Transação" (sempre visível)
+Tela 2: Transações
+Copy[Header com Filtros]
+- Período: [Dropdown: Este mês / Mês passado / Personalizado]
+- Tipo: [Todos / Receitas / Despesas]
+- Categoria: [Dropdown de categorias]
+- Campo de busca
+
+[Lista de Transações]
+- Data | Descrição | Categoria | Valor
+- Ícone de editar/excluir em cada item
+- Agrupado por mês
+- Totalizadores por período
+
+[Botão]
+- "+ Nova Transação"
+Tela 3: Modal/Formulário - Nova/Editar Transação
+Copy[Modal overlay]
+
+Tipo: [Toggle: Receita / Despesa]
+Valor: [Input numérico] R$
+Data: [Date picker]
+Categoria: [Dropdown]
+Descrição: [Textarea]
+
+[Botões]
+- Cancelar | Salvar
+Tela 4: Categorias
+Copy[Tabs: Receitas | Despesas]
+
+[Lista de Categorias]
+- Nome | Cor | Ícone | Ações (editar/excluir)
+
+[Botão]
+- "+ Nova Categoria"
+Navegação Principal
+Copy- Dashboard (ícone home)
+- Transações (ícone lista)
+- Categorias (ícone tag)
+- Relatórios (ícone gráfico) - Futuro
+5. Implementation Considerations
+Fase 1 - Setup (Semana 1)
+
+Criar projeto Next.js com TypeScript
+Configurar Tailwind e shadcn/ui
+Configurar Supabase (criar projeto, tabelas, seed data)
+Estruturar pastas do projeto:
+Copy/app
+  /dashboard
+  /transactions
+  /categories
+/components
+  /ui (shadcn)
+  /dashboard
+  /transactions
+  /categories
+/lib
+  /supabase (client)
+  /types
+  /utils
+
+
+Fase 2 - Core Features (Semana 2-3)
+
+Implementar CRUD de transações
+Dashboard com cards de resumo
+Listagem com filtros
+Integração com Supabase
+
+Fase 3 - Visualizações (Semana 4)
+
+Adicionar gráficos (Recharts)
+Resumo por categorias
+Polimento UI/UX
+
+Considerações Técnicas
+Performance:
+
+Usar React Server Components quando possível
+Implementar paginação para listas grandes
+Lazy loading de gráficos
+Otimizar queries do Supabase (índices, select específico)
+
+UX/UI:
+
+Design responsivo (mobile-first)
+Feedback visual para ações (toasts/notifications)
+Loading states
+Empty states com CTAs claros
+Validação de formulários em tempo real
+Confirmação antes de deletar
+
+Dados:
+
+Validação no frontend E backend (Supabase RLS)
+Formato de moeda brasileiro (R$)
+Locale pt-BR para datas
+Backup sugerido (export periódico)
+
+Estado da Aplicação:
+
+Zustand ou Context API para estado global simples
+React Query (TanStack Query) para cache de dados do Supabase
+Optimistic updates para melhor UX
+
+Segurança (para quando adicionar auth):
+
+Row Level Security no Supabase
+Validação de dados com Zod
+Sanitização de inputs
+
+Testes (futuro):
+
+Vitest para testes unitários
+Playwright para testes E2E
+Começar com testes críticos (CRUD de transações)
+
+Melhorias Incrementais Sugeridas
+Após MVP:
+
+PWA (app instalável no celular)
+Dark mode
+Importação de extrato bancário (CSV)
+Anexos em transações (fotos de recibos)
+Lembretes de contas a pagar
+Multi-moeda
+Sistema de tags além de categorias
+
+</plan>
