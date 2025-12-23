@@ -1,8 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ArrowLeftRight, Tags, Wallet, Upload, CreditCard } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Tags, Wallet, Upload, CreditCard, LogOut, User } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -10,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -19,7 +21,12 @@ const navItems = [
   { title: "Categorias", url: "/categorias", icon: Tags },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onSignOut?: () => void;
+  userEmail?: string;
+}
+
+export function AppSidebar({ onSignOut, userEmail }: AppSidebarProps) {
   const [location] = useLocation();
 
   return (
@@ -54,6 +61,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      {onSignOut && (
+        <SidebarFooter className="p-4 border-t border-sidebar-border">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+              <User className="w-4 h-4" />
+            </div>
+            <span className="text-sm text-muted-foreground truncate flex-1">
+              {userEmail}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSignOut}
+            className="w-full justify-start"
+            data-testid="button-signout"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </Button>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }
