@@ -1,6 +1,7 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./supabaseStorage";
+import { authMiddleware, type AuthenticatedRequest } from "./authMiddleware";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -13,9 +14,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  app.post("/api/extract-transactions", async (req, res) => {
+  app.post("/api/extract-transactions", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { text, fileName, statementType } = req.body;
+      const { text, statementType } = req.body;
 
       if (!text) {
         return res.status(400).json({ error: "No text provided" });
@@ -108,9 +109,10 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.post("/api/transactions/batch", async (req, res) => {
+  app.post("/api/transactions/batch", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { transactions, userId } = req.body;
+      const { transactions } = req.body;
+      const userId = req.userId!;
 
       if (!Array.isArray(transactions)) {
         return res.status(400).json({ error: "Invalid transactions array" });
@@ -139,9 +141,9 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.get("/api/transactions", async (req, res) => {
+  app.get("/api/transactions", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.query.userId as string | undefined;
+      const userId = req.userId!;
       const transactions = await storage.getAllTransactions(userId);
       res.json(transactions);
     } catch (error) {
@@ -150,8 +152,9 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.post("/api/transactions", async (req, res) => {
+  app.post("/api/transactions", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
+      const userId = req.userId!;
       const transaction = await storage.createTransaction({
         date: new Date(req.body.date),
         amount: req.body.amount,
@@ -162,7 +165,7 @@ ${text.substring(0, 10000)}`;
         installmentNumber: req.body.installmentNumber || null,
         installmentsTotal: req.body.installmentsTotal || null,
         cardId: req.body.cardId || null,
-      }, req.body.userId);
+      }, userId);
       res.json(transaction);
     } catch (error) {
       console.error("Error creating transaction:", error);
@@ -170,7 +173,7 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.patch("/api/transactions/:id", async (req, res) => {
+  app.patch("/api/transactions/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const transaction = await storage.updateTransaction(req.params.id, {
         date: req.body.date ? new Date(req.body.date) : undefined,
@@ -190,7 +193,7 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.delete("/api/transactions/:id", async (req, res) => {
+  app.delete("/api/transactions/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       await storage.deleteTransaction(req.params.id);
       res.json({ success: true });
@@ -200,9 +203,9 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.get("/api/categories", async (req, res) => {
+  app.get("/api/categories", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.query.userId as string | undefined;
+      const userId = req.userId!;
       const categories = await storage.getAllCategories(userId);
       res.json(categories);
     } catch (error) {
@@ -211,14 +214,15 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
+      const userId = req.userId!;
       const category = await storage.createCategory({
         name: req.body.name,
         type: req.body.type,
         color: req.body.color,
         icon: req.body.icon || null,
-      }, req.body.userId);
+      }, userId);
       res.json(category);
     } catch (error) {
       console.error("Error creating category:", error);
@@ -226,7 +230,7 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.patch("/api/categories/:id", async (req, res) => {
+  app.patch("/api/categories/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const category = await storage.updateCategory(req.params.id, {
         name: req.body.name,
@@ -241,7 +245,7 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.delete("/api/categories/:id", async (req, res) => {
+  app.delete("/api/categories/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       await storage.deleteCategory(req.params.id);
       res.json({ success: true });
@@ -251,9 +255,9 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.get("/api/credit-cards", async (req, res) => {
+  app.get("/api/credit-cards", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.query.userId as string | undefined;
+      const userId = req.userId!;
       const cards = await storage.getAllCreditCards(userId);
       res.json(cards);
     } catch (error) {
@@ -262,8 +266,9 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.post("/api/credit-cards", async (req, res) => {
+  app.post("/api/credit-cards", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
+      const userId = req.userId!;
       const card = await storage.createCreditCard({
         name: req.body.name,
         lastFourDigits: req.body.lastFourDigits,
@@ -275,7 +280,7 @@ ${text.substring(0, 10000)}`;
         limit: req.body.limit || null,
         closingDay: req.body.closingDay || null,
         dueDay: req.body.dueDay || null,
-      }, req.body.userId);
+      }, userId);
       res.json(card);
     } catch (error) {
       console.error("Error creating credit card:", error);
@@ -283,7 +288,7 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.patch("/api/credit-cards/:id", async (req, res) => {
+  app.patch("/api/credit-cards/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const card = await storage.updateCreditCard(req.params.id, {
         name: req.body.name,
@@ -304,7 +309,7 @@ ${text.substring(0, 10000)}`;
     }
   });
 
-  app.delete("/api/credit-cards/:id", async (req, res) => {
+  app.delete("/api/credit-cards/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       await storage.deleteCreditCard(req.params.id);
       res.json({ success: true });
