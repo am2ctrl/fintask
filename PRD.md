@@ -1,9 +1,10 @@
 # PRD - Product Requirements Document
 ## FinTask - Gestão Financeira Familiar
 
-**Versão:** 1.0  
-**Data:** Dezembro 2025  
-**Status:** Em Desenvolvimento  
+**Versão:** 1.0
+**Data:** Dezembro 2025
+**Status:** Produção (Ambiente Local)
+**Última Atualização:** 26/12/2025  
 
 ---
 
@@ -16,7 +17,7 @@ O **FinTask** é uma aplicação web de gestão financeira familiar desenvolvida
 ### 1.2 Problema a Resolver
 
 Famílias brasileiras enfrentam dificuldades em:
-- Consolidar informações financeiras de múltiplas fontes (bancos, cartões)
+- Consolidar informações financeiras de múltiplas fontes (bancos, cartões, pix, dinheiro em especie, criptoativos)
 - Categorizar manualmente centenas de transações mensais
 - Visualizar o panorama financeiro familiar de forma clara
 - Acompanhar gastos de diferentes membros da família
@@ -30,6 +31,7 @@ Uma plataforma web que:
 - Oferece visualizações claras através de dashboards interativos
 - Permite controle granular de cartões de crédito por membro da família
 - Funciona com acesso restrito apenas para membros convidados (privacidade familiar)
+- Permite de maneira automatica extrair e classificar dados dos extratos bancarios,faturas de cartao de credito e outros documentos, categorizando corretamente e integrando ao controle do app.
 
 ### 1.4 Métricas de Sucesso
 
@@ -171,10 +173,10 @@ Uma plataforma web que:
 4. Sistema extrai texto do documento
 5. IA (GPT-4) analisa e identifica transações
 6. Sistema exibe preview com todas as transações encontradas
-7. Usuário revisa categorias sugeridas
+7. Usuário revisa categorias sugeridas e pode colocar uma anotação para melhor lembrar do que se trata aquela transação
 8. Usuário seleciona quais transações importar
 9. Transações são salvas no banco de dados
-10. Usuário é redirecionado para lista de transações
+10. Usuário é redirecionado para lista de transações atualizada.
 
 ### 3.3 Jornada de Tracking Diário
 
@@ -388,7 +390,11 @@ Uma plataforma web que:
 - Freelance
 - Investimentos
 - Bônus
-- Outros Receitas
+- Distribuição de lucros
+- Venda de participação
+- Juros
+- Extras/Bonus/Prêmio 
+- Outras Receitas
 
 **Categorias de Despesa:**
 - Alimentação
@@ -409,7 +415,9 @@ Uma plataforma web que:
 - Internet
 - Streaming
 - Banco
-- Outros Despesas
+- Tributo
+- Taxa bancária
+- Outras Despesas
 
 #### RF-CAT-002: CRUD de Categorias
 **Descrição:** Permitir gestão de categorias personalizadas.
@@ -561,7 +569,7 @@ Uma plataforma web que:
 ### 5.5 Localização
 
 - **Idioma:** Português do Brasil (pt-BR)
-- **Moeda:** Real Brasileiro (BRL)
+- **Moeda:** Real Brasileiro (BRL) e Dolar Americado (USD) - fazer comparativo de cotação de câmbio usando API publica e gratuita confiável.
 - **Formato de data:** DD/MM/YYYY
 - **Fuso horário:** America/Sao_Paulo (padrão)
 
@@ -835,4 +843,62 @@ fintask/
 
 ---
 
-*Documento gerado automaticamente - FinTask v1.0*
+## 12. Changelog de Implementação
+
+### 26/12/2025 - Otimização e Limpeza de Código
+
+- ✅ **Removidas todas as dependências do Replit**
+  - Deletados plugins: `@replit/vite-plugin-*`
+  - Deletada pasta `server/replit_integrations`
+  - Deletado arquivo `replit.md`
+
+- ✅ **Código refatorado e otimizado**
+  - Criados utilitários compartilhados: `iconMap.ts`, `format.ts`, `logger.ts`
+  - Criados tipos API centralizados em `client/src/types/api.ts`
+  - Removida pasta `client/src/components/examples` (15 arquivos não utilizados)
+  - Identificados 31 pontos de melhoria (11 alta prioridade corrigidos)
+
+- ✅ **Correção crítica de UUIDs**
+  - Migration criada para substituir UUIDs sequenciais por aleatórios
+  - 24 categorias padrão atualizadas com UUIDs reais
+  - Integridade referencial mantida (0 transações órfãs)
+  - Guia completo de execução criado (`UUID_MIGRATION_GUIDE.md`)
+
+- ✅ **Documentação atualizada**
+  - Criado `FRAMEWORK_MIGRACAO_PROJETOS.md` - Guia definitivo de migração
+  - Atualizado README.md com melhorias recentes
+  - Atualizado PRD.md com status de produção
+
+- ✅ **Melhorias de qualidade de código**
+  - Logger wrapper para desenvolvimento/produção
+  - Formatadores centralizados (moeda, data, etc.)
+  - Tipos TypeScript mais rigorosos
+  - Remoção de imports não utilizados
+
+### 25/12/2025 - Correção de Bugs e Funcionalidades
+
+- ✅ **Corrigido bug de criação de categorias**
+  - Substituído localStorage por API com `useMutation`
+  - Implementado tratamento de erros com toast
+  - Adicionada conversão de ícones string → LucideIcon
+
+- ✅ **Setup de ambiente local Windows**
+  - Instalado `dotenv` e `cross-env`
+  - Configurado `.env` com variáveis completas
+  - Adaptado servidor para Windows (removido `reusePort`)
+  - Aplicada migration AI (`supabase-ai-migration.sql`)
+
+### Anteriores - Desenvolvimento Inicial
+
+- ✅ **Implementadas todas as funcionalidades core**
+  - Dashboard com KPIs e gráficos
+  - CRUD completo de transações, categorias, cartões
+  - Importação de PDF com IA (GPT-4)
+  - Autenticação Supabase
+  - Row Level Security (RLS)
+  - 24 categorias padrão PT-BR
+  - Modos de transação (avulsa, recorrente, parcelada)
+
+---
+
+*Documento vivo - Atualizado continuamente - FinTask v1.0*
