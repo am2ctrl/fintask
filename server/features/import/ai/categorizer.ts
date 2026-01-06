@@ -182,7 +182,11 @@ export async function categorizeTransactions(
   // TIER 1: Tentar Gemini 2.5 Flash primeiro
   try {
     logger.debug("   🤖 Tentando Gemini 2.5 Flash...");
-    const result = await geminiModel.generateContent(prompt);
+    const model = getGemini();  // Initialize Gemini client
+    if (!model) {
+      throw new Error("Gemini API key not configured");
+    }
+    const result = await model.generateContent(prompt);
     const responseText = result.response.text();
 
     // Parse da resposta JSON
@@ -221,7 +225,11 @@ export async function categorizeTransactions(
     try {
       logger.debug("   🔄 Tentando GPT-4o-mini (fallback tier 2)...");
 
-      const gptResponse = await openai.chat.completions.create({
+      const client = getOpenAI();  // Initialize OpenAI client
+      if (!client) {
+        throw new Error("OpenAI API key not configured");
+      }
+      const gptResponse = await client.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{
           role: "user",

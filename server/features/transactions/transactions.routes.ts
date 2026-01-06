@@ -70,7 +70,10 @@ export function registerTransactionRoutes(app: Express) {
       }
       logger.error("=== FIM DO ERRO ===\n");
 
-      res.status(500).json({ error: "Failed to save transactions" });
+      res.status(500).json({
+        error: "Failed to save transactions",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
