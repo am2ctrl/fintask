@@ -16,17 +16,30 @@ export interface CategoryForAI {
   type: "income" | "expense";
 }
 
-// Gemini 2.5 Flash - Principal (tier 1)
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+// Gemini 2.5 Flash - Principal (tier 1) - lazy initialization
+let genAI: GoogleGenerativeAI | null = null;
+let geminiModel: any = null;
 
-// ✅ OTIMIZAÇÃO: Cachear modelo Gemini ao invés de recriar a cada request
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+function getGemini() {
+  if (!genAI && process.env.GOOGLE_GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+    geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  }
+  return geminiModel;
+}
 
-// OpenAI GPT-4o-mini - Fallback (tier 2)
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// OpenAI GPT-4o-mini - Fallback (tier 2) - lazy initialization
+let openai: OpenAI | null = null;
+
+function getOpenAI() {
+  if (!openai && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return openai;
+}
 
 export interface CategorizedTransaction extends ParsedTransaction {
   categoryId: string;
