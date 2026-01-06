@@ -1,7 +1,15 @@
 // Debug endpoint
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
 export default async (req, res) => {
   try {
-    const serverPath = require.resolve('../dist/index.cjs');
+    const serverPath = join(__dirname, '..', 'dist', 'index.cjs');
     const handler = require(serverPath);
     
     res.status(200).json({
