@@ -61,7 +61,8 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+// Initialize the application
+async function initializeApp() {
   await registerRoutes(httpServer, app);
 
   // Middleware de erro globalizado e robusto
@@ -77,21 +78,34 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: process.platform === "win32" ? "localhost" : "0.0.0.0",
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
-})();
+  return app;
+}
+
+// Only start the server if not in Vercel serverless environment
+// Vercel sets VERCEL=1, AWS Lambda doesn't have httpServer.listen
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  (async () => {
+    await initializeApp();
+
+    // ALWAYS serve the app on the port specified in the environment variable PORT
+    // Other ports are firewalled. Default to 5000 if not specified.
+    // this serves both the API and the client.
+    // It is the only port that is not firewalled.
+    const port = parseInt(process.env.PORT || "5000", 10);
+    httpServer.listen(
+      {
+        port,
+        host: process.platform === "win32" ? "localhost" : "0.0.0.0",
+      },
+      () => {
+        log(`serving on port ${port}`);
+      },
+    );
+  })();
+} else {
+  // In serverless environment, initialize but don't listen
+  initializeApp().catch(console.error);
+}
 
 // Export for CommonJS (used by Vercel serverless function)
 module.exports = app;
