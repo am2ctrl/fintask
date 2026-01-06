@@ -71,12 +71,16 @@ async function initializeApp() {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
+    // Only serve static files in production when NOT on Vercel
+    // Vercel handles static files automatically via outputDirectory
     serveStatic(app);
-  } else {
+  } else if (!process.env.VERCEL) {
+    // Setup Vite dev server in development (not on Vercel)
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
+  // On Vercel, skip static file serving - Vercel handles it
 
   return app;
 }
