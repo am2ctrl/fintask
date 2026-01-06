@@ -1,27 +1,17 @@
 {
-  "version": 2,
-  "routes": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "outputDirectory": "dist/public",
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.js"
+      "source": "/api/:path*",
+      "destination": "/api"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "dist/public/assets/$1"
-    },
-    {
-      "src": "/favicon.png",
-      "dest": "dist/public/favicon.png"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "dist/public/index.html"
+      "source": "/:path*",
+      "destination": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "regions": [
-    "gru1"
   ]
 }

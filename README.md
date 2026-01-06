@@ -61,7 +61,7 @@ O projeto foi recentemente refatorado para uma arquitetura escalável **Feature-
 
 ### Estrutura de Pastas
 
-```
+```text
 fintask/
 ├── client/src/
 │   ├── features/              # Módulos auto-contidos
@@ -140,12 +140,41 @@ npm start
 
 ## 📦 Deploy (Vercel)
 
-O projeto está configurado para deploy "Zero Config" na Vercel.
+O projeto está configurado para deploy automático na Vercel.
 
-1. Conecte seu repositório GitHub na Vercel.
-2. Importe o projeto.
-3. Configure as variáveis de ambiente no painel da Vercel.
-4. Deploy! 🚀
+### Passos para Deploy
+
+1. **Conecte o repositório GitHub na Vercel**
+   * Acesse [vercel.com](https://vercel.com)
+   * Clique em "Add New Project"
+   * Importe o repositório `am2ctrl/fintask`
+
+2. **Configure as variáveis de ambiente**
+
+   No painel da Vercel, adicione todas as variáveis do arquivo `.env.example`:
+
+   ```env
+   SUPABASE_URL
+   SUPABASE_ANON_KEY
+   SUPABASE_SERVICE_ROLE_KEY
+   SESSION_SECRET
+   VITE_SUPABASE_URL
+   VITE_SUPABASE_ANON_KEY
+   GOOGLE_GEMINI_API_KEY (opcional)
+   AI_INTEGRATIONS_OPENAI_API_KEY (opcional)
+   ```
+
+3. **Deploy automático**
+
+   A Vercel irá:
+   * Detectar automaticamente o `vercel.json`
+   * Executar `npm install`
+   * Executar `npm run build`
+   * Fazer deploy da aplicação
+
+4. **Pronto!** 🚀
+
+   Cada push para a branch `main` irá disparar um novo deploy automaticamente.
 
 ---
 
