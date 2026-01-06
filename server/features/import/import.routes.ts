@@ -10,14 +10,26 @@ import { logger } from '../../core/logger';
 import { buildExtractionPrompt } from './ai/prompts';
 import { postProcessTransactions } from './import.service';
 
-// Configurar OpenAI (backup)
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Configurar OpenAI (backup) - lazy initialization
+let openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!openai && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return openai;
+}
 
-// Configurar Gemini (primário)
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+// Configurar Gemini (primário) - lazy initialization
+let genAI: GoogleGenerativeAI | null = null;
+function getGemini() {
+  if (!genAI && process.env.GOOGLE_GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+  }
+  return genAI;
+}
 
 export function registerImportRoutes(app: Express) {
   // ============================================================================
