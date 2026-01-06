@@ -81,11 +81,28 @@ async function initializeApp() {
   return app;
 }
 
+// Track initialization state
+let initialized = false;
+let initPromise: Promise<typeof app> | null = null;
+
+// Create a wrapper handler for serverless environments
+async function handler(req: Request, res: Response) {
+  if (!initialized) {
+    if (!initPromise) {
+      initPromise = initializeApp();
+    }
+    await initPromise;
+    initialized = true;
+  }
+  return app(req, res);
+}
+
 // Only start the server if not in Vercel serverless environment
 // Vercel sets VERCEL=1, AWS Lambda doesn't have httpServer.listen
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   (async () => {
     await initializeApp();
+    initialized = true;
 
     // ALWAYS serve the app on the port specified in the environment variable PORT
     // Other ports are firewalled. Default to 5000 if not specified.
@@ -102,10 +119,10 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
       },
     );
   })();
-} else {
-  // In serverless environment, initialize but don't listen
-  initializeApp().catch(console.error);
 }
 
 // Export for CommonJS (used by Vercel serverless function)
-module.exports = app;
+// Export the handler that ensures initialization
+module.exports = handler;
+// Also export the app directly for compatibility
+module.exports.app = app;
