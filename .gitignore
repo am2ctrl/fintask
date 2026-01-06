@@ -18,3 +18,4 @@ replit.nix
 .claude/
 .gemini/
 .local/
+.vercel

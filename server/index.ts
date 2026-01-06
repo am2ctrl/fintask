@@ -92,3 +92,6 @@ app.use((req, res, next) => {
     },
   );
 })();
+
+// Export for CommonJS (used by Vercel serverless function)
+module.exports = app;
