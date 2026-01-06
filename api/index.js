@@ -1,24 +1,28 @@
 // Vercel Serverless Function Handler
 // This file imports the Express handler from the built server
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
+let handler;
 
 try {
   // Import the built server handler
-  const serverPath = path.join(__dirname, '..', 'dist', 'index.cjs');
+  const serverPath = join(__dirname, '..', 'dist', 'index.cjs');
   console.log('[api/index.js] Loading server from:', serverPath);
 
-  const handler = require(serverPath);
+  handler = require(serverPath);
 
   console.log('[api/index.js] Handler loaded successfully, type:', typeof handler);
-
-  // Export the handler for Vercel
-  module.exports = handler;
 } catch (error) {
   console.error('[api/index.js] Failed to load handler:', error);
 
-  // Export error handler
-  module.exports = async (req, res) => {
+  // Create error handler
+  handler = async (req, res) => {
     console.error('[api/index.js] Error handler called');
     res.status(500).json({
       error: 'Server initialization failed',
@@ -27,3 +31,6 @@ try {
     });
   };
 }
+
+// Export the handler for Vercel
+export default handler;

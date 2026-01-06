@@ -1,5 +1,5 @@
 // Simple test endpoint to verify Vercel function works
-module.exports = async (req, res) => {
+export default async (req, res) => {
   res.status(200).json({
     message: 'Vercel function is working!',
     timestamp: new Date().toISOString(),
