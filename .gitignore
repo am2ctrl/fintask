@@ -4,3 +4,17 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Environment variables (IMPORTANT: Never commit these!)
+.env
+.env.*
+!.env.example
+
+# Replit specific
+.replit
+replit.nix
+
+# Temporary & AI specific
+.claude/
+.gemini/
+.local/
