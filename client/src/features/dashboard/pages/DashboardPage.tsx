@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Upload, Loader2 } from "lucide-react";
 import { startOfMonth, endOfMonth, isWithinInterval, format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -46,11 +46,23 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [hasInitializedMonth, setHasInitializedMonth] = useState(false);
   const { toast } = useToast();
 
   const { data: apiTransactions = [], isLoading: loadingTransactions } = useQuery<ApiTransaction[]>({
     queryKey: ["/api/transactions"],
   });
+
+  // ✨ Detectar mês da transação mais recente quando carregar
+  useEffect(() => {
+    if (!hasInitializedMonth && apiTransactions.length > 0) {
+      const sortedTransactions = [...apiTransactions].sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setSelectedMonth(new Date(sortedTransactions[0].date));
+      setHasInitializedMonth(true);
+    }
+  }, [apiTransactions, hasInitializedMonth]);
 
   const { data: apiCategories = [], isLoading: loadingCategories } = useQuery<ApiCategory[]>({
     queryKey: ["/api/categories"],
