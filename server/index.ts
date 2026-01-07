@@ -125,8 +125,6 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   })();
 }
 
-// Export for CommonJS (used by Vercel serverless function)
-// Export the handler that ensures initialization
-module.exports = handler;
-// Also export the app directly for compatibility
-module.exports.app = app;
+// Export for ESM (default) and CommonJS compatibility
+export default handler;
+export { app };

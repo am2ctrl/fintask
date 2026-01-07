@@ -38,29 +38,29 @@ function IncomeExpenseChartComponent({ data }: IncomeExpenseChartProps) {
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="oklch(var(--chart-2))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="oklch(var(--chart-2))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="oklch(var(--destructive))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="oklch(var(--destructive))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey="month"
                 className="text-xs"
-                tick={{ fill: "oklch(var(--muted-foreground))" }}
+                tick={{ fill: "hsl(var(--muted-foreground))" }}
               />
               <YAxis
                 className="text-xs"
-                tick={{ fill: "oklch(var(--muted-foreground))" }}
+                tick={{ fill: "hsl(var(--muted-foreground))" }}
                 tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "oklch(var(--popover))",
-                  border: "1px solid oklch(var(--border))",
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
                   borderRadius: "0.375rem",
                 }}
                 formatter={(value: number) => formatCurrency(value)}
@@ -70,7 +70,7 @@ function IncomeExpenseChartComponent({ data }: IncomeExpenseChartProps) {
                 type="monotone"
                 dataKey="income"
                 name="Receitas"
-                stroke="oklch(var(--chart-2))"
+                stroke="hsl(var(--chart-2))"
                 strokeWidth={2}
                 fill="url(#incomeGradient)"
               />
@@ -78,7 +78,7 @@ function IncomeExpenseChartComponent({ data }: IncomeExpenseChartProps) {
                 type="monotone"
                 dataKey="expense"
                 name="Despesas"
-                stroke="oklch(var(--destructive))"
+                stroke="hsl(var(--destructive))"
                 strokeWidth={2}
                 fill="url(#expenseGradient)"
               />

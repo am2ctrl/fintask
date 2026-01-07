@@ -44,8 +44,8 @@ function CategoryPieChartComponent({ data, title = "Despesas por Categoria" }: C
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "oklch(var(--popover))",
-                  border: "1px solid oklch(var(--border))",
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
                   borderRadius: "0.375rem",
                 }}
                 formatter={(value: number) => [
