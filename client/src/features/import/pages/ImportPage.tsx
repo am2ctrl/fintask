@@ -7,7 +7,7 @@ import {
   type ExtractedTransaction,
 } from "@/features/import/components/ExtractedTransactionPreview";
 import { defaultCategories, type Category } from "@/features/categories/components/CategoryBadge";
-import { apiRequest } from "@/shared/lib/queryClient";
+import { apiRequest, queryClient } from "@/shared/lib/queryClient";
 import { Card } from "@/shared/components/ui/card";
 import { Wallet, CreditCard, Upload, CheckCircle2, FileSearch, Sparkles, Loader2, CircleDot } from "lucide-react";
 import { getIconByName } from "@/shared/lib/iconMap";
@@ -119,6 +119,9 @@ export default function Import() {
       await apiRequest("POST", "/api/transactions/batch", {
         transactions: transactionsToSave,
       });
+
+      // ✅ Invalidar cache para atualizar dashboard e página de transações
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
 
       toast({
         title: "Transações importadas",
