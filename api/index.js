@@ -16,7 +16,8 @@ try {
   const serverPath = join(__dirname, '..', 'dist', 'index.cjs');
   console.log('[api/index.js] Loading server from:', serverPath);
 
-  handler = require(serverPath);
+  const serverModule = require(serverPath);
+  handler = serverModule.default || serverModule;
 
   console.log('[api/index.js] Handler loaded successfully, type:', typeof handler);
 } catch (error) {
