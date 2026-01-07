@@ -81,10 +81,13 @@ export function registerImportRoutes(app: Express) {
         type: t.type || detectTransactionType(t.description),
       }));
 
-      // PASSO 3: Buscar categorias do banco
-      logger.debug("\n📂 PASSO 3: Carregando categorias do usuário...");
-      const categories = await storage.getAllCategories(userId);
-      logger.debug(`   ✓ ${categories.length} categorias disponíveis`);
+      // PASSO 3: Buscar categorias e cartões em paralelo (OTIMIZAÇÃO)
+      logger.debug("\n📂 PASSO 3: Carregando categorias e cartões...");
+      const [categories, allCards] = await Promise.all([
+        storage.getAllCategories(userId),
+        storage.getAllCreditCards(userId)
+      ]);
+      logger.debug(`   ✓ ${categories.length} categorias, ${allCards.length} cartões`);
 
       // PASSO 4: IA apenas para categorização (RÁPIDO - em lotes paralelos)
       logger.debug("\n🤖 PASSO 4: Categorizando com IA (lotes paralelos)...");
@@ -94,12 +97,13 @@ export function registerImportRoutes(app: Express) {
       );
       logger.debug(`   ✓ ${categorized.length} transações categorizadas`);
 
-      // PASSO 5: Processar cartões e membros da família (igual ao método antigo)
+      // PASSO 5: Processar cartões e membros da família (cartões já carregados)
       logger.debug("\n💳 PASSO 5: Associando cartões e membros...");
       const processed = await postProcessTransactions(
         categorized as any[],
         statementType || parseResult.statementType,
-        userId
+        userId,
+        allCards  // ⚡ Passar cartões já carregados para evitar query duplicada
       );
 
       // PASSO 6: Retornar categoryId E category name (para compatibilidade com frontend)

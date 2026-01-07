@@ -151,14 +151,22 @@ function dbCreditCardToCreditCard(dbCard: DbCreditCard): CreditCard {
 
 export class SupabaseStorage implements IStorage {
   async getAllCategories(userId?: string): Promise<Category[]> {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .or(`user_id.is.null,user_id.eq.${userId || "null"}`)
-      .order("name");
+    // ⚡ OTIMIZAÇÃO: Duas queries paralelas ao invés de OR (mais rápido com índices)
+    const [defaultCats, userCats] = await Promise.all([
+      supabase.from("categories").select("*").is("user_id", null),
+      userId ? supabase.from("categories").select("*").eq("user_id", userId) : Promise.resolve({ data: null, error: null })
+    ]);
 
-    if (error) throw new Error(error.message);
-    return (data || []).map(dbCategoryToCategory);
+    if (defaultCats.error) throw new Error(defaultCats.error.message);
+    if (userCats.error) throw new Error(userCats.error.message);
+
+    // Merge results
+    const allData = [...(defaultCats.data || []), ...(userCats.data || [])];
+
+    // Sort by name (since we lost .order() in split queries)
+    return allData
+      .map(dbCategoryToCategory)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getCategory(id: string): Promise<Category | undefined> {

@@ -25,7 +25,8 @@ interface GeminiTransaction {
 export async function postProcessTransactions(
   transactions: GeminiTransaction[],
   statementType: string,
-  userId: string
+  userId: string,
+  allCards?: any[]  // ⚡ OTIMIZAÇÃO: Aceitar cartões pré-carregados para evitar query duplicada
 ): Promise<any[]> {
 
   // 1. Filtrar pagamentos de fatura (se for cartão de crédito)
@@ -122,7 +123,10 @@ export async function postProcessTransactions(
   });
 
   // 4. Associar transações aos cartões cadastrados usando últimos 4 dígitos
-  const allCards = await storage.getAllCreditCards(userId);
+  // ⚡ OTIMIZAÇÃO: Se cartões já foram passados, não buscar novamente
+  if (!allCards) {
+    allCards = await storage.getAllCreditCards(userId);
+  }
   logger.debug(`\n💳 Cartões cadastrados: ${allCards.length}`);
   allCards.forEach(card => {
     logger.debug(`   - ${card.name} (final ${card.lastFourDigits})`);

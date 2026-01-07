@@ -124,17 +124,12 @@ export async function categorizeBatch(
   categories: CategoryForAI[],
   batchSize: number = 15
 ): Promise<CategorizedTransaction[]> {
-  logger.debug(`   🔍 categorizeBatch chamado com ${transactions.length} transações`);
-  
   if (transactions.length === 0) return [];
 
   // Para menos de 20 transações, processar direto (não vale a pena dividir)
   if (transactions.length < 20) {
-    logger.debug(`   ⚠️ Menos de 20 transações (${transactions.length}), processando direto sem lotes`);
     return categorizeTransactions(transactions, categories);
   }
-
-  logger.debug(`   ✅ ${transactions.length} transações - dividindo em lotes!`);
 
   // Dividir em lotes
   const batches: ParsedTransaction[][] = [];
@@ -142,14 +137,14 @@ export async function categorizeBatch(
     batches.push(transactions.slice(i, i + batchSize));
   }
 
-  logger.debug(`   📦 Dividido em ${batches.length} lotes de ~${batchSize} transações`);
+  // ⚡ OTIMIZAÇÃO: Logging simplificado (só início e fim)
+  logger.debug(`   🔍 Categorizando ${transactions.length} transações em ${batches.length} lotes paralelos...`);
 
   // Processar 3 lotes por vez em paralelo
   const results: CategorizedTransaction[][] = [];
 
   for (let i = 0; i < batches.length; i += 3) {
     const currentBatches = batches.slice(i, i + 3);
-    logger.debug(`   ⚡ Processando lotes ${i + 1}-${Math.min(i + currentBatches.length, batches.length)} de ${batches.length}...`);
 
     const batchPromises = currentBatches.map(batch =>
       categorizeTransactions(batch, categories)
@@ -159,7 +154,7 @@ export async function categorizeBatch(
     results.push(...batchResults);
   }
 
-  logger.debug(`   ✅ Todos os ${batches.length} lotes processados!`);
+  logger.debug(`   ✅ Categorização concluída!`);
   return results.flat();
 }
 
