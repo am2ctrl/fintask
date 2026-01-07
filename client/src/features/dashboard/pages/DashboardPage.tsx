@@ -62,7 +62,7 @@ export default function Dashboard() {
       setSelectedMonth(new Date(sortedTransactions[0].date));
       setHasInitializedMonth(true);
     }
-  }, [apiTransactions, hasInitializedMonth]);
+  }, [apiTransactions.length, hasInitializedMonth]);
 
   const { data: apiCategories = [], isLoading: loadingCategories } = useQuery<ApiCategory[]>({
     queryKey: ["/api/categories"],
