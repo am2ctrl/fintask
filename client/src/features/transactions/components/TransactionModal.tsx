@@ -63,6 +63,7 @@ export function TransactionModal({
   const [mode, setMode] = useState<TransactionMode>("avulsa");
   const [installmentNumber, setInstallmentNumber] = useState("1");
   const [installmentsTotal, setInstallmentsTotal] = useState("2");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (transaction) {
@@ -74,6 +75,7 @@ export function TransactionModal({
       setMode(transaction.mode || "avulsa");
       setInstallmentNumber(transaction.installmentNumber?.toString() || "1");
       setInstallmentsTotal(transaction.installmentsTotal?.toString() || "2");
+      setDueDate((transaction as any).dueDate ? new Date((transaction as any).dueDate) : undefined);
     } else {
       setType("expense");
       setAmount("");
@@ -83,6 +85,7 @@ export function TransactionModal({
       setMode("avulsa");
       setInstallmentNumber("1");
       setInstallmentsTotal("2");
+      setDueDate(undefined);
     }
   }, [transaction, open]);
 
@@ -111,7 +114,8 @@ export function TransactionModal({
         installmentNumber: parsedInstallmentNumber,
         installmentsTotal: parsedInstallmentsTotal,
       } : {}),
-    });
+      ...(type === "expense" && dueDate ? { dueDate } : {}),
+    } as any);
     onOpenChange(false);
   };
 
@@ -231,6 +235,56 @@ export function TransactionModal({
               </PopoverContent>
             </Popover>
           </div>
+
+          {type === "expense" && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label>Data de Vencimento (Opcional)</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p className="font-medium">Para que serve?</p>
+                    <p className="text-xs mt-1">
+                      Define quando esta despesa vence. Útil para contas recorrentes como aluguel,
+                      cartão de crédito, internet, etc. Você receberá lembretes das próximas despesas a vencer.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    data-testid="button-due-date-picker"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar vencimento"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate}
+                    onSelect={(d) => setDueDate(d)}
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+              {dueDate && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDueDate(undefined)}
+                  className="text-xs"
+                >
+                  Limpar vencimento
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">

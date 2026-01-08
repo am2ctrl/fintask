@@ -158,6 +158,21 @@ REGRA DE OURO:
 - VARIE as categorias - não use sempre a mesma!
 
 ═══════════════════════════════════════════════════════════════════
+EXTRAÇÃO DE DATA DE VENCIMENTO (MUITO IMPORTANTE)
+═══════════════════════════════════════════════════════════════════
+
+Para FATURAS DE CARTÃO DE CRÉDITO:
+- Procure informações como "Vencimento:", "Data de Vencimento:", "Vence em:"
+- Geralmente aparece no topo ou rodapé da fatura
+- Se encontrar, adicione o campo "due_date": "YYYY-MM-DD" em TODAS as transações
+- Se não encontrar, use null
+
+Para EXTRATOS BANCÁRIOS:
+- Transações recorrentes (água, luz, internet, etc.) podem ter vencimento mencionado
+- Se identificar, adicione "due_date": "YYYY-MM-DD"
+- Se não tiver, use null
+
+═══════════════════════════════════════════════════════════════════
 FORMATO DE SAÍDA (JSON - SIGA RIGOROSAMENTE)
 ═══════════════════════════════════════════════════════════════════
 
@@ -173,14 +188,15 @@ FORMATO DE SAÍDA (JSON - SIGA RIGOROSAMENTE)
       "installment_number": 1 | null,
       "installments_total": 3 | null,
       "card_last_digits": "1758" | null,
-      "card_holder_name": "NOME COMPLETO DO ADICIONAL" | null
+      "card_holder_name": "NOME COMPLETO DO ADICIONAL" | null,
+      "due_date": "YYYY-MM-DD" | null
     }
   ]
 }
 
 **EXEMPLOS:**
 
-Fatura com múltiplos cartões:
+Fatura com múltiplos cartões e vencimento:
 {
   "transactions": [
     {
@@ -193,7 +209,8 @@ Fatura com múltiplos cartões:
       "installment_number": 1,
       "installments_total": 3,
       "card_last_digits": "3639",
-      "card_holder_name": "ALLAN BRUNO GOMES FERREIRA"
+      "card_holder_name": "ALLAN BRUNO GOMES FERREIRA",
+      "due_date": "2025-08-10"
     },
     {
       "date": "2025-05-15",
@@ -205,7 +222,8 @@ Fatura com múltiplos cartões:
       "installment_number": 5,
       "installments_total": 6,
       "card_last_digits": "1758",
-      "card_holder_name": "MAINARA LETICIA DA SILVA BARIL"
+      "card_holder_name": "MAINARA LETICIA DA SILVA BARIL",
+      "due_date": "2025-08-10"
     }
   ]
 }

@@ -35,6 +35,7 @@ export interface Transaction {
   installmentsTotal: number | null;
   cardId: string | null;
   familyMemberId: string | null;
+  dueDate: Date | null;
 }
 
 export interface InsertTransaction {
@@ -48,6 +49,7 @@ export interface InsertTransaction {
   installmentsTotal?: number | null;
   cardId?: string | null;
   familyMemberId?: string | null;
+  dueDate?: Date | null;
 }
 
 export interface CreditCard {

@@ -52,6 +52,7 @@ export function registerTransactionRoutes(app: Express) {
           installmentsTotal: t.installmentsTotal || null,
           cardId,
           familyMemberId,
+          dueDate: t.dueDate ? new Date(t.dueDate) : null,
         };
 
         if (index === 0) {
@@ -149,6 +150,7 @@ export function registerTransactionRoutes(app: Express) {
         installmentNumber: req.body.installmentNumber || null,
         installmentsTotal: req.body.installmentsTotal || null,
         cardId: req.body.cardId || null,
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
       }, userId);
       res.json(transaction);
     } catch (error) {
@@ -172,6 +174,7 @@ export function registerTransactionRoutes(app: Express) {
         installmentNumber: req.body.installmentNumber,
         installmentsTotal: req.body.installmentsTotal,
         cardId: req.body.cardId,
+        dueDate: req.body.dueDate !== undefined ? (req.body.dueDate ? new Date(req.body.dueDate) : null) : undefined,
       });
       res.json(transaction);
     } catch (error) {

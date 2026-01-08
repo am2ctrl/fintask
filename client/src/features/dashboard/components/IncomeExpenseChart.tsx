@@ -25,17 +25,27 @@ interface IncomeExpenseChartProps {
 function IncomeExpenseChartComponent({ data }: IncomeExpenseChartProps) {
   const hasData = data.some(d => d.income > 0 || d.expense > 0);
 
+  // Dados mockados para exibir gráfico vazio
+  const displayData = hasData ? data : data.map(d => ({
+    ...d,
+    income: 0,
+    expense: 0
+  }));
+
   return (
-    <Card className="p-6" data-testid="chart-income-expense">
-      <h3 className="text-base font-medium mb-4">Receitas vs Despesas</h3>
-      <div className="h-64">
-        {!hasData ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            <p>Nenhuma transação registrada nos últimos 6 meses</p>
+    <Card className="p-4" data-testid="chart-income-expense">
+      <h3 className="text-sm font-medium mb-3">Receitas vs Despesas</h3>
+      <div className="h-48">
+        {!hasData && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-xs text-muted-foreground bg-background/80 px-3 py-1.5 rounded">
+              Nenhuma transação registrada
+            </p>
           </div>
-        ) : (
+        )}
+        <div className="relative h-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
+            <AreaChart data={displayData}>
               <defs>
                 <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
@@ -84,7 +94,7 @@ function IncomeExpenseChartComponent({ data }: IncomeExpenseChartProps) {
               />
             </AreaChart>
           </ResponsiveContainer>
-        )}
+        </div>
       </div>
     </Card>
   );

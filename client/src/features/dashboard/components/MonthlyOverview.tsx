@@ -33,16 +33,16 @@ export function MonthlyOverview({ month, transactions, onDayClick }: MonthlyOver
   const today = new Date();
 
   return (
-    <Card className="p-6" data-testid="monthly-overview">
-      <h3 className="text-base font-medium mb-4">
-        Visão do Mês - {format(month, "MMMM yyyy", { locale: ptBR })}
+    <Card className="p-4" data-testid="monthly-overview">
+      <h3 className="text-sm font-medium mb-3">
+        {format(month, "MMMM yyyy", { locale: ptBR })}
       </h3>
-      
-      <div className="grid grid-cols-7 gap-1">
+
+      <div className="grid grid-cols-7 gap-0.5">
         {weekDays.map((day) => (
           <div
             key={day}
-            className="text-center text-xs font-medium text-muted-foreground py-2"
+            className="text-center text-[10px] font-medium text-muted-foreground py-1"
           >
             {day}
           </div>
@@ -63,9 +63,9 @@ export function MonthlyOverview({ month, transactions, onDayClick }: MonthlyOver
               key={day.toISOString()}
               onClick={() => onDayClick?.(day, dayTransactions)}
               className={`
-                aspect-square p-1 rounded-md text-xs flex flex-col items-center justify-start gap-0.5
+                aspect-square p-0.5 rounded text-[10px] flex flex-col items-center justify-center gap-0
                 hover-elevate active-elevate-2
-                ${isToday ? "ring-2 ring-primary" : ""}
+                ${isToday ? "ring-1 ring-primary" : ""}
                 ${hasTransactions ? "bg-muted/50" : ""}
               `}
               data-testid={`day-${format(day, "yyyy-MM-dd")}`}
@@ -74,19 +74,9 @@ export function MonthlyOverview({ month, transactions, onDayClick }: MonthlyOver
                 {format(day, "d")}
               </span>
               {hasTransactions && (
-                <>
-                  <span className="text-muted-foreground text-[10px]">
-                    {dayTransactions.length}
-                  </span>
-                  <span
-                    className={`text-[10px] font-mono ${
-                      total >= 0 ? "text-primary" : "text-destructive"
-                    }`}
-                  >
-                    {total >= 0 ? "+" : ""}
-                    {(total / 1000).toFixed(1)}k
-                  </span>
-                </>
+                <span className="text-muted-foreground text-[8px]">
+                  {dayTransactions.length}
+                </span>
               )}
             </button>
           );

@@ -13,6 +13,7 @@ import { CategoryPieChart } from "@/features/dashboard/components/CategoryPieCha
 import { MonthCalendar } from "@/features/dashboard/components/MonthCalendar";
 import { MonthlyOverview } from "@/features/dashboard/components/MonthlyOverview";
 import { FamilySpendingCard } from "@/features/dashboard/components/FamilySpendingCard";
+import { UpcomingExpensesCard } from "@/features/dashboard/components/UpcomingExpensesCard";
 import type { Transaction } from "@/features/transactions/components/TransactionItem";
 import type { Category } from "@/features/categories/components/CategoryBadge";
 import { CircleDot } from "lucide-react";
@@ -140,7 +141,7 @@ export default function Dashboard() {
 
   const categoryData = useMemo(() => {
     const expensesByCategory = new Map<string, { name: string; value: number; color: string }>();
-    
+
     monthTransactions
       .filter((t) => t.type === "expense")
       .forEach((t) => {
@@ -160,6 +161,25 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
   }, [monthTransactions]);
+
+  const upcomingExpenses = useMemo(() => {
+    const today = new Date();
+    return transactions
+      .filter((t) => t.type === "expense" && (t as any).dueDate)
+      .map((t) => {
+        const dueDate = new Date((t as any).dueDate);
+        const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          id: t.id,
+          description: t.description,
+          amount: t.amount,
+          dueDate,
+          categoryName: t.category.name,
+          categoryColor: t.category.color,
+          daysUntilDue,
+        };
+      });
+  }, [transactions]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -263,7 +283,8 @@ export default function Dashboard() {
         <SummaryCard type="balance" value={balance} label="Saldo" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <CategoryPieChart data={categoryData} />
         <IncomeExpenseChart data={chartData} />
         <MonthlyOverview
           month={selectedMonth}
@@ -274,8 +295,8 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CategoryPieChart data={categoryData} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <UpcomingExpensesCard expenses={upcomingExpenses} />
         <FamilySpendingCard />
       </div>
 
