@@ -28,7 +28,8 @@ interface ApiTransaction {
   amount: number;
   type: "income" | "expense";
   categoryId: string;
-  description: string;
+  name: string;
+  description?: string | null;
   mode?: string;
   installmentNumber?: number | null;
   installmentsTotal?: number | null;
@@ -95,6 +96,7 @@ export default function Dashboard() {
       amount: t.amount,
       type: t.type,
       category: categoriesMap.get(t.categoryId) || { id: t.categoryId, name: "Outros", type: t.type, color: "#6b7280", icon: CircleDot },
+      name: t.name,
       description: t.description,
       mode: t.mode as "avulsa" | "parcelada" | undefined,
       installmentNumber: t.installmentNumber ?? undefined,
@@ -173,7 +175,7 @@ export default function Dashboard() {
         const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         return {
           id: t.id,
-          description: t.description,
+          description: t.name,
           amount: t.amount,
           dueDate,
           categoryName: t.category.name,

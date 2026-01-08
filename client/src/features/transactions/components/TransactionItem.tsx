@@ -19,7 +19,8 @@ export interface Transaction {
   amount: number;
   type: "income" | "expense";
   category: Category;
-  description: string;
+  name: string;
+  description?: string | null;
   mode?: TransactionMode;
   installmentNumber?: number;
   installmentsTotal?: number;
@@ -76,7 +77,7 @@ export function TransactionItem({ transaction, onEdit, onDelete }: TransactionIt
           {format(transaction.date, "dd/MM/yyyy", { locale: ptBR })}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{transaction.description}</p>
+          <p className="text-sm font-medium truncate">{transaction.name}</p>
           {(mode !== "avulsa" || transaction.card || transaction.familyMember) && (
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               {mode === "parcelada" && transaction.installmentNumber && transaction.installmentsTotal && (

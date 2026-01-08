@@ -173,6 +173,34 @@ Para EXTRATOS BANCÁRIOS:
 - Se não tiver, use null
 
 ═══════════════════════════════════════════════════════════════════
+EXTRAÇÃO DE NOME vs DESCRIÇÃO (MUITO IMPORTANTE)
+═══════════════════════════════════════════════════════════════════
+
+**DIFERENÇA ENTRE 'name' E 'description':**
+- 'name': Nome CURTO da transação para identificação (obrigatório)
+  * Extraia o nome principal do estabelecimento/serviço do extrato
+  * Exemplos: "FARMACIA PANVEL", "UBER", "NETFLIX", "AMAZON BR"
+  * Remova informações extras (parcelas, localização, etc.)
+
+- 'description': Informações ADICIONAIS (opcional, pode ser null)
+  * Use para detalhes complementares se relevantes
+  * Exemplos: parcelas "05/06", localização "CURITIBA", ID do pedido
+  * Se não houver informação adicional relevante, use null
+
+**EXEMPLOS DE EXTRAÇÃO:**
+- Texto: "FARMACIA PANVEL CURITIBA 05/06"
+  → name: "FARMACIA PANVEL"
+  → description: "Curitiba - Parcela 5 de 6"
+
+- Texto: "UBER *TRIP"
+  → name: "UBER"
+  → description: null
+
+- Texto: "NETFLIX.COM"
+  → name: "NETFLIX"
+  → description: null
+
+═══════════════════════════════════════════════════════════════════
 FORMATO DE SAÍDA (JSON - SIGA RIGOROSAMENTE)
 ═══════════════════════════════════════════════════════════════════
 
@@ -180,7 +208,8 @@ FORMATO DE SAÍDA (JSON - SIGA RIGOROSAMENTE)
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "Descrição original COMPLETA da transação",
+      "name": "Nome curto da transação",
+      "description": "Detalhes adicionais" | null,
       "amount": 123.45,
       "type": "expense" | "income",
       "categoryId": "uuid-da-categoria-apropriada",
@@ -201,7 +230,8 @@ Fatura com múltiplos cartões e vencimento:
   "transactions": [
     {
       "date": "2025-07-17",
-      "description": "RUGGERI E PIVA LAGUN01/03",
+      "name": "RUGGERI E PIVA",
+      "description": "Lagunas - Parcela 1 de 3",
       "amount": 134.74,
       "type": "expense",
       "categoryId": "b3b91fe7-fb7e-4919-99b8-5b7a90396621",
@@ -214,7 +244,8 @@ Fatura com múltiplos cartões e vencimento:
     },
     {
       "date": "2025-05-15",
-      "description": "RELOJOARIA ORIENTE 05/06",
+      "name": "RELOJOARIA ORIENTE",
+      "description": "Parcela 5 de 6",
       "amount": 367.33,
       "type": "expense",
       "categoryId": "b3b91fe7-fb7e-4919-99b8-5b7a90396621",

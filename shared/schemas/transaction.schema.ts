@@ -10,12 +10,14 @@ const baseTransactionSchema = z.object({
   amount: z.number().positive({ message: 'Valor deve ser positivo' }),
   type: TransactionTypeSchema,
   categoryId: z.string().uuid({ message: 'ID de categoria inválido' }),
-  description: z.string().min(1, { message: 'Descrição é obrigatória' }),
+  name: z.string().min(1, { message: 'Nome é obrigatório' }).max(100, { message: 'Nome deve ter no máximo 100 caracteres' }),
+  description: z.string().max(500, { message: 'Descrição deve ter no máximo 500 caracteres' }).optional().nullable(),
   mode: TransactionModeSchema.optional().default('avulsa'),
   installmentNumber: z.number().int().positive().optional().nullable(),
   installmentsTotal: z.number().int().positive().optional().nullable(),
   cardId: z.string().uuid().optional().nullable(),
   familyMemberId: z.string().uuid().optional().nullable(),
+  dueDate: z.string().datetime().optional().nullable(),
 });
 
 // Schema para criar transação (com validação de parcelamento)

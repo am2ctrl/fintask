@@ -29,7 +29,8 @@ export interface Transaction {
   amount: number;
   type: "income" | "expense";
   categoryId: string;
-  description: string;
+  name: string;
+  description: string | null;
   mode: TransactionMode;
   installmentNumber: number | null;
   installmentsTotal: number | null;
@@ -43,7 +44,8 @@ export interface InsertTransaction {
   amount: number;
   type: "income" | "expense";
   categoryId: string;
-  description: string;
+  name: string;
+  description?: string | null;
   mode?: TransactionMode;
   installmentNumber?: number | null;
   installmentsTotal?: number | null;
@@ -125,6 +127,7 @@ function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
     amount: dbTx.amount,
     type: dbTx.type,
     categoryId: dbTx.category_id,
+    name: dbTx.name,
     description: dbTx.description,
     mode: dbTx.mode,
     installmentNumber: dbTx.installment_number,
@@ -261,7 +264,8 @@ export class SupabaseStorage implements IStorage {
         amount: transaction.amount,
         type: transaction.type,
         category_id: transaction.categoryId,
-        description: transaction.description,
+        name: transaction.name,
+        description: transaction.description || null,
         mode: transaction.mode || "avulsa",
         installment_number: transaction.installmentNumber || null,
         installments_total: transaction.installmentsTotal || null,
@@ -283,7 +287,8 @@ export class SupabaseStorage implements IStorage {
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.type) updateData.type = updates.type;
     if (updates.categoryId) updateData.category_id = updates.categoryId;
-    if (updates.description) updateData.description = updates.description;
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.mode) updateData.mode = updates.mode;
     if (updates.installmentNumber !== undefined) updateData.installment_number = updates.installmentNumber;
     if (updates.installmentsTotal !== undefined) updateData.installments_total = updates.installmentsTotal;
@@ -318,7 +323,8 @@ export class SupabaseStorage implements IStorage {
         amount: tx.amount,
         type: tx.type,
         category_id: tx.categoryId,
-        description: tx.description,
+        name: tx.name,
+        description: tx.description || null,
         mode: tx.mode || "avulsa",
         installment_number: tx.installmentNumber || null,
         installments_total: tx.installmentsTotal || null,

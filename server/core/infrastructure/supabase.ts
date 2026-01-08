@@ -44,7 +44,8 @@ export interface DbTransaction {
   amount: number;
   type: "income" | "expense";
   category_id: string;
-  description: string;
+  name: string;
+  description: string | null;
   mode: TransactionMode;
   installment_number: number | null;
   installments_total: number | null;

@@ -59,6 +59,7 @@ export function TransactionModal({
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [categoryId, setCategoryId] = useState("");
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<TransactionMode>("avulsa");
   const [installmentNumber, setInstallmentNumber] = useState("1");
@@ -71,7 +72,8 @@ export function TransactionModal({
       setAmount(transaction.amount.toString());
       setDate(transaction.date);
       setCategoryId(transaction.category.id);
-      setDescription(transaction.description);
+      setName(transaction.name);
+      setDescription(transaction.description || "");
       setMode(transaction.mode || "avulsa");
       setInstallmentNumber(transaction.installmentNumber?.toString() || "1");
       setInstallmentsTotal(transaction.installmentsTotal?.toString() || "2");
@@ -81,6 +83,7 @@ export function TransactionModal({
       setAmount("");
       setDate(new Date());
       setCategoryId("");
+      setName("");
       setDescription("");
       setMode("avulsa");
       setInstallmentNumber("1");
@@ -93,22 +96,23 @@ export function TransactionModal({
   const selectedCategory = categories.find(c => c.id === categoryId);
 
   const handleSave = () => {
-    if (!amount || !categoryId || !description) return;
-    
+    if (!amount || !categoryId || !name) return;
+
     const parsedInstallmentNumber = parseInt(installmentNumber) || 1;
     const parsedInstallmentsTotal = parseInt(installmentsTotal) || 2;
-    
+
     if (mode === "parcelada") {
       if (parsedInstallmentsTotal < 2 || parsedInstallmentsTotal > 48) return;
       if (parsedInstallmentNumber < 1 || parsedInstallmentNumber > parsedInstallmentsTotal) return;
     }
-    
+
     onSave({
       date,
       amount: parseFloat(amount),
       type,
       categoryId,
-      description,
+      name,
+      description: description || null,
       mode: type === "expense" ? mode : "avulsa",
       ...(mode === "parcelada" && type === "expense" ? {
         installmentNumber: parsedInstallmentNumber,
@@ -200,10 +204,36 @@ export function TransactionModal({
               id="title"
               type="text"
               placeholder={type === "income" ? "Ex: Salário Janeiro" : "Ex: Conta de Luz"}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="text-base"
               data-testid="input-title"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="description">Descrição (Opcional)</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-medium">Adicione detalhes extras</p>
+                  <p className="text-xs mt-1">
+                    Use este campo para informações complementares sobre a transação,
+                    como observações, número de parcelas, ou qualquer detalhe importante.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Textarea
+              id="description"
+              placeholder="Ex: Referente ao mês de Janeiro, pagamento via PIX"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="resize-none"
+              rows={2}
             />
           </div>
 
@@ -457,7 +487,7 @@ export function TransactionModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!amount || !categoryId || !description}
+            disabled={!amount || !categoryId || !name}
             data-testid="button-save"
           >
             Salvar
