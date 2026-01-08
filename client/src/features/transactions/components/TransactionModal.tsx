@@ -181,6 +181,34 @@ export function TransactionModal({
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">
+              <Label htmlFor="title">Nome da {type === "income" ? "Receita" : "Despesa"}</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-medium">Dê um nome para identificar</p>
+                  <p className="text-xs mt-1">
+                    {type === "income"
+                      ? "Ex: Salário Janeiro, Freelance Projeto X, Venda produto"
+                      : "Ex: Aluguel, Conta de Luz, Supermercado, Netflix"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              id="title"
+              type="text"
+              placeholder={type === "income" ? "Ex: Salário Janeiro" : "Ex: Conta de Luz"}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="text-base"
+              data-testid="input-title"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
               <Label htmlFor="amount">Valor</Label>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -417,33 +445,6 @@ export function TransactionModal({
               )}
             </div>
           )}
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="description">Descricao</Label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p className="font-medium">Dica para descricao</p>
-                  <p className="text-xs mt-1">
-                    Seja especifico! Em vez de "Compra", escreva "Supermercado Extra - compras do mes".
-                    Isso facilita encontrar a transacao depois.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <Textarea
-              id="description"
-              placeholder="Descreva a transacao... Ex: Supermercado Extra - compras da semana"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="resize-none"
-              rows={2}
-              data-testid="input-description"
-            />
-          </div>
         </div>
 
         <DialogFooter className="gap-2">
