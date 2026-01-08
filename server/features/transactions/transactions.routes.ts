@@ -3,6 +3,7 @@ import { authMiddleware, type AuthenticatedRequest } from '../auth';
 import { storage } from '../../core/infrastructure/supabaseStorage';
 import { validateUUID } from '../../../shared/utils/validation';
 import { logger } from '../../core/logger';
+import { mapCategoryId, getCategoryName } from '../../utils/categoryMapping';
 
 export function registerTransactionRoutes(app: Express) {
   app.post("/api/transactions/batch", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
@@ -25,12 +26,26 @@ export function registerTransactionRoutes(app: Express) {
         const cardId = t.cardId && validateUUID(t.cardId) ? t.cardId : null;
         const familyMemberId = t.familyMemberId && validateUUID(t.familyMemberId) ? t.familyMemberId : null;
 
+        // ✅ NOVO: Mapear categoryId numérico para UUID válido
+        let categoryId: string;
+        try {
+          categoryId = mapCategoryId(t.categoryId);
+
+          if (index === 0) {
+            logger.debug(`🔄 Mapeou categoryId: "${t.categoryId}" → "${categoryId}" (${getCategoryName(t.categoryId)})`);
+          }
+        } catch (error) {
+          const errorMsg = `Transação ${index + 1}: Categoria inválida "${t.categoryId}"`;
+          logger.error(errorMsg, error);
+          throw new Error(errorMsg);
+        }
+
         // Criar objeto limpo apenas com campos válidos - IMPORTANTE: não incluir outros campos!
         const cleanTransaction = {
           date: new Date(t.date),
           amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
           type: t.type,
-          categoryId: t.categoryId,
+          categoryId,
           description: t.description,
           mode: t.mode || "avulsa",
           installmentNumber: t.installmentNumber || null,
@@ -120,11 +135,15 @@ export function registerTransactionRoutes(app: Express) {
   app.post("/api/transactions", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.userId!;
+
+      // ✅ NOVO: Mapear categoryId numérico para UUID
+      const categoryId = mapCategoryId(req.body.categoryId);
+
       const transaction = await storage.createTransaction({
         date: new Date(req.body.date),
         amount: req.body.amount,
         type: req.body.type,
-        categoryId: req.body.categoryId,
+        categoryId,
         description: req.body.description,
         mode: req.body.mode || "avulsa",
         installmentNumber: req.body.installmentNumber || null,
@@ -140,11 +159,14 @@ export function registerTransactionRoutes(app: Express) {
 
   app.patch("/api/transactions/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
+      // ✅ NOVO: Mapear categoryId se presente
+      const categoryId = req.body.categoryId ? mapCategoryId(req.body.categoryId) : undefined;
+
       const transaction = await storage.updateTransaction(req.params.id, {
         date: req.body.date ? new Date(req.body.date) : undefined,
         amount: req.body.amount,
         type: req.body.type,
-        categoryId: req.body.categoryId,
+        categoryId,
         description: req.body.description,
         mode: req.body.mode,
         installmentNumber: req.body.installmentNumber,

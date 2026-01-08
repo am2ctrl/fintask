@@ -306,26 +306,41 @@ export class SupabaseStorage implements IStorage {
     transactions: InsertTransaction[],
     userId: string
   ): Promise<Transaction[]> {
+    // 🔍 LOG: Mapear dados antes de inserir
+    const dataToInsert = transactions.map((tx, index) => {
+      const mapped = {
+        date: tx.date.toISOString().split("T")[0],
+        amount: tx.amount,
+        type: tx.type,
+        category_id: tx.categoryId,
+        description: tx.description,
+        mode: tx.mode || "avulsa",
+        installment_number: tx.installmentNumber || null,
+        installments_total: tx.installmentsTotal || null,
+        card_id: tx.cardId || null,
+        family_member_id: tx.familyMemberId || null,
+        user_id: userId,
+      };
+
+      // Log da primeira transação para debug
+      if (index === 0) {
+        console.log("🔍 [batchCreateTransactions] Primeira transação mapeada:", JSON.stringify(mapped, null, 2));
+      }
+
+      return mapped;
+    });
+
     const { data, error } = await supabase
       .from("transactions")
-      .insert(
-        transactions.map(tx => ({
-          date: tx.date.toISOString().split("T")[0],
-          amount: tx.amount,
-          type: tx.type,
-          category_id: tx.categoryId,
-          description: tx.description,
-          mode: tx.mode || "avulsa",
-          installment_number: tx.installmentNumber || null,
-          installments_total: tx.installmentsTotal || null,
-          card_id: tx.cardId || null,
-          family_member_id: tx.familyMemberId || null,
-          user_id: userId,
-        }))
-      )
+      .insert(dataToInsert)
       .select();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("❌ [batchCreateTransactions] Erro do Supabase:", JSON.stringify(error, null, 2));
+      console.error("❌ [batchCreateTransactions] Dados que tentou inserir:", JSON.stringify(dataToInsert.slice(0, 3), null, 2));
+      throw new Error(error.message);
+    }
+
     return (data || []).map(dbTransactionToTransaction);
   }
 

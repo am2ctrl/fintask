@@ -8,6 +8,7 @@ import { AppSidebar } from "@/shared/components/layout/AppSidebar";
 import { ThemeProvider } from "@/shared/components/layout/ThemeProvider";
 import { ThemeToggle } from "@/shared/components/layout/ThemeToggle";
 import { AuthProvider, useAuth } from "@/features/auth";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import TransactionsPage from "@/features/transactions/pages/TransactionsPage";
 import CategoriesPage from "@/features/categories/pages/CategoriesPage";
@@ -73,16 +74,18 @@ function AuthenticatedApp() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <AuthProvider>
-            <AuthenticatedApp />
-          </AuthProvider>
-          <Toaster />
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AuthProvider>
+              <AuthenticatedApp />
+            </AuthProvider>
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
