@@ -33,6 +33,7 @@ interface ApiTransaction {
   installmentNumber?: number | null;
   installmentsTotal?: number | null;
   cardId?: string | null;
+  dueDate?: string | null;
 }
 
 interface ApiCategory {
@@ -99,7 +100,8 @@ export default function Dashboard() {
       installmentNumber: t.installmentNumber ?? undefined,
       installmentsTotal: t.installmentsTotal ?? undefined,
       cardId: t.cardId ?? undefined,
-    }));
+      dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
+    } as any));
   }, [apiTransactions, categoriesMap]);
 
   const monthInterval = useMemo(() => ({

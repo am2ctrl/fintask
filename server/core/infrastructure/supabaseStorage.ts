@@ -131,6 +131,7 @@ function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
     installmentsTotal: dbTx.installments_total,
     cardId: dbTx.card_id,
     familyMemberId: (dbTx as any).family_member_id || null,
+    dueDate: (dbTx as any).due_date ? new Date((dbTx as any).due_date) : null,
   };
 }
 
@@ -266,6 +267,7 @@ export class SupabaseStorage implements IStorage {
         installments_total: transaction.installmentsTotal || null,
         card_id: transaction.cardId || null,
         family_member_id: transaction.familyMemberId || null,
+        due_date: transaction.dueDate ? transaction.dueDate.toISOString().split("T")[0] : null,
         user_id: userId || null,
       })
       .select()
@@ -287,6 +289,7 @@ export class SupabaseStorage implements IStorage {
     if (updates.installmentsTotal !== undefined) updateData.installments_total = updates.installmentsTotal;
     if (updates.cardId !== undefined) updateData.card_id = updates.cardId;
     if (updates.familyMemberId !== undefined) updateData.family_member_id = updates.familyMemberId;
+    if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate ? updates.dueDate.toISOString().split("T")[0] : null;
 
     const { data, error } = await supabase
       .from("transactions")
@@ -321,6 +324,7 @@ export class SupabaseStorage implements IStorage {
         installments_total: tx.installmentsTotal || null,
         card_id: tx.cardId || null,
         family_member_id: tx.familyMemberId || null,
+        due_date: tx.dueDate ? tx.dueDate.toISOString().split("T")[0] : null,
         user_id: userId,
       };
 
