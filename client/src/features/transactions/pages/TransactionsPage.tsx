@@ -20,7 +20,8 @@ interface ApiTransaction {
   amount: number;
   type: "income" | "expense";
   categoryId: string;
-  description: string;
+  name: string;
+  description: string | null;
   mode?: string;
   installmentNumber?: number | null;
   installmentsTotal?: number | null;
@@ -47,6 +48,7 @@ export default function Transactions() {
     familyMemberId: "all",
     dateFrom: undefined,
     dateTo: undefined,
+    periodPreset: "all",
   });
   const { toast } = useToast();
 
@@ -96,6 +98,7 @@ export default function Transactions() {
       amount: t.amount,
       type: t.type,
       category: categoriesMap.get(t.categoryId) || { id: t.categoryId, name: "Outros", type: t.type, color: "#6b7280", icon: CircleDot },
+      name: t.name,
       description: t.description,
       mode: t.mode as "avulsa" | "recorrente" | "parcelada" | undefined,
       installmentNumber: t.installmentNumber ?? undefined,
@@ -106,33 +109,35 @@ export default function Transactions() {
   }, [apiTransactions, categoriesMap]);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((t: any) => {
-      if (filters.search && !t.description.toLowerCase().includes(filters.search.toLowerCase())) {
-        return false;
-      }
-      if (filters.type !== "all" && t.type !== filters.type) {
-        return false;
-      }
-      if (filters.categoryId !== "all" && t.category.id !== filters.categoryId) {
-        return false;
-      }
-      if (filters.familyMemberId !== "all") {
-        if (filters.familyMemberId === "main") {
-          // Transações do usuário principal (sem familyMemberId)
-          if (t.familyMemberId) return false;
-        } else {
-          // Transações de um membro específico
-          if (t.familyMemberId !== filters.familyMemberId) return false;
+    return transactions
+      .filter((t: any) => {
+        if (filters.search && !t.name.toLowerCase().includes(filters.search.toLowerCase())) {
+          return false;
         }
-      }
-      if (filters.dateFrom && t.date < filters.dateFrom) {
-        return false;
-      }
-      if (filters.dateTo && t.date > filters.dateTo) {
-        return false;
-      }
-      return true;
-    });
+        if (filters.type !== "all" && t.type !== filters.type) {
+          return false;
+        }
+        if (filters.categoryId !== "all" && t.category.id !== filters.categoryId) {
+          return false;
+        }
+        if (filters.familyMemberId !== "all") {
+          if (filters.familyMemberId === "main") {
+            // Transações do usuário principal (sem familyMemberId)
+            if (t.familyMemberId) return false;
+          } else {
+            // Transações de um membro específico
+            if (t.familyMemberId !== filters.familyMemberId) return false;
+          }
+        }
+        if (filters.dateFrom && t.date < filters.dateFrom) {
+          return false;
+        }
+        if (filters.dateTo && t.date > filters.dateTo) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [transactions, filters]);
 
   const totalFiltered = filteredTransactions.reduce((acc, t) => {
