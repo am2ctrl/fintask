@@ -214,7 +214,8 @@ interface CategoryModalProps {
   onOpenChange: (open: boolean) => void;
   category?: Category | null;
   type: "income" | "expense";
-  onSave: (data: { name: string; color: string; type: "income" | "expense"; icon: LucideIcon }) => void;
+  parentId?: string | null;
+  onSave: (data: { name: string; color: string; type: "income" | "expense"; icon: LucideIcon; parentId?: string | null }) => void;
 }
 
 export function CategoryModal({
@@ -222,6 +223,7 @@ export function CategoryModal({
   onOpenChange,
   category,
   type,
+  parentId,
   onSave,
 }: CategoryModalProps) {
   const [name, setName] = useState("");
@@ -243,9 +245,13 @@ export function CategoryModal({
   const handleSave = () => {
     if (!name.trim()) return;
     const icon = getIconById(selectedIconId);
-    onSave({ name: name.trim(), color, type, icon });
+    console.log("[DEBUG CategoryModal handleSave] parentId prop:", parentId);
+    console.log("[DEBUG CategoryModal handleSave] enviando para onSave:", { name: name.trim(), color, type, icon, parentId });
+    onSave({ name: name.trim(), color, type, icon, parentId });
     onOpenChange(false);
   };
+
+  const isSubcategory = !!parentId;
 
   const SelectedIcon = getIconById(selectedIconId);
 
@@ -254,10 +260,14 @@ export function CategoryModal({
       <DialogContent className="sm:max-w-md" data-testid="modal-category">
         <DialogHeader>
           <DialogTitle>
-            {category ? "Editar Categoria" : "Nova Categoria"}
+            {category ? "Editar Categoria" : isSubcategory ? "Nova Subcategoria" : "Nova Categoria"}
           </DialogTitle>
           <DialogDescription>
-            {category ? "Altere os detalhes da categoria" : "Crie uma nova categoria para suas transações"}
+            {category
+              ? "Altere os detalhes da categoria"
+              : isSubcategory
+                ? "Crie uma nova subcategoria dentro da categoria pai"
+                : "Crie uma nova categoria para suas transações"}
           </DialogDescription>
         </DialogHeader>
 

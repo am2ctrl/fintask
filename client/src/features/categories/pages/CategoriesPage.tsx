@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { Plus, type LucideIcon } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
@@ -139,8 +140,12 @@ export default function Categories() {
     },
   });
 
-  const handleSave = (data: { name: string; color: string; type: "income" | "expense"; icon: LucideIcon }) => {
+  const handleSave = (data: { name: string; color: string; type: "income" | "expense"; icon: LucideIcon; parentId?: string | null }) => {
     const iconId = getIconIdFromComponent(data.icon);
+
+    console.log("[DEBUG handleSave] data recebida:", data);
+    console.log("[DEBUG handleSave] data.parentId:", data.parentId);
+    console.log("[DEBUG handleSave] parentIdForNew atual:", parentIdForNew);
 
     if (editingCategory) {
       updateMutation.mutate({
@@ -152,13 +157,15 @@ export default function Categories() {
         },
       });
     } else {
-      createMutation.mutate({
+      const payload = {
         name: data.name,
         type: data.type,
         color: data.color,
         icon: iconId,
-        parentId: parentIdForNew,
-      });
+        parentId: data.parentId || null,
+      };
+      console.log("[DEBUG handleSave] payload para createMutation:", payload);
+      createMutation.mutate(payload);
     }
     setEditingCategory(null);
     setParentIdForNew(null);
@@ -208,8 +215,13 @@ export default function Categories() {
   };
 
   const handleAddSubcategory = (parentId: string) => {
-    setEditingCategory(null);
-    setParentIdForNew(parentId);
+    console.log("[DEBUG handleAddSubcategory] parentId recebido:", parentId);
+    // Usar flushSync para garantir que o parentId seja atualizado antes de abrir o modal
+    flushSync(() => {
+      setEditingCategory(null);
+      setParentIdForNew(parentId);
+    });
+    console.log("[DEBUG handleAddSubcategory] após flushSync, abrindo modal");
     setModalOpen(true);
   };
 
@@ -309,6 +321,7 @@ export default function Categories() {
         }}
         category={editingCategory}
         type={activeTab}
+        parentId={parentIdForNew}
         onSave={handleSave}
       />
     </div>

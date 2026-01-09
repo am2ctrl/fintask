@@ -29,6 +29,7 @@ export function registerCategoryRoutes(app: Express) {
         type: req.body.type,
         color: req.body.color,
         icon: req.body.icon || null,
+        parentId: req.body.parentId || null,
       }, userId);
 
       logger.debug("Categoria criada com sucesso:", JSON.stringify(category, null, 2));
