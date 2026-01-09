@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "@/features/auth";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import TransactionsPage from "@/features/transactions/pages/TransactionsPage";
+import { PaymentControlPage } from "@/features/payment-control";
 import CategoriesPage from "@/features/categories/pages/CategoriesPage";
 import CardsPage from "@/features/cards/pages/CardsPage";
 import ImportPage from "@/features/import/pages/ImportPage";
@@ -23,6 +24,7 @@ function Router() {
     <Switch>
       <Route path="/" component={DashboardPage} />
       <Route path="/transacoes" component={TransactionsPage} />
+      <Route path="/pagamentos" component={PaymentControlPage} />
       <Route path="/cartoes" component={CardsPage} />
       <Route path="/importar" component={ImportPage} />
       <Route path="/categorias" component={CategoriesPage} />

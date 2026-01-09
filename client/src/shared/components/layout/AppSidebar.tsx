@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ArrowLeftRight, Tags, Wallet, Upload, CreditCard, LogOut, User } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Tags, Wallet, Upload, CreditCard, LogOut, User, Receipt } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +16,7 @@ import { Button } from "@/shared/components/ui/button";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Transações", url: "/transacoes", icon: ArrowLeftRight },
+  { title: "Pagamentos", url: "/pagamentos", icon: Receipt },
   { title: "Cartões", url: "/cartoes", icon: CreditCard },
   { title: "Importar", url: "/importar", icon: Upload },
   { title: "Categorias", url: "/categorias", icon: Tags },
