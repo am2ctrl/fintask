@@ -6,6 +6,7 @@ export interface Category {
   type: "income" | "expense";
   color: string;
   icon: string | null;
+  parentId: string | null;
 }
 
 export interface FamilyMember {
@@ -124,6 +125,7 @@ function dbCategoryToCategory(dbCat: DbCategory): Category {
     type: dbCat.type,
     color: dbCat.color,
     icon: dbCat.icon,
+    parentId: dbCat.parent_id,
   };
 }
 
@@ -207,6 +209,7 @@ export class SupabaseStorage implements IStorage {
         type: category.type,
         color: category.color,
         icon: category.icon,
+        parent_id: category.parentId || null,
         user_id: userId || null,
       })
       .select()
@@ -229,6 +232,7 @@ export class SupabaseStorage implements IStorage {
         ...(updates.type && { type: updates.type }),
         ...(updates.color && { color: updates.color }),
         ...(updates.icon !== undefined && { icon: updates.icon }),
+        ...(updates.parentId !== undefined && { parent_id: updates.parentId }),
       })
       .eq("id", id)
       .select()

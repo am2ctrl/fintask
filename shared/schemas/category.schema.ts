@@ -7,6 +7,7 @@ export const createCategorySchema = z.object({
   type: CategoryTypeSchema,
   color: z.string().regex(/^#[0-9A-F]{6}$/i, { message: 'Cor deve ser hex válida' }),
   icon: z.string().optional().nullable(),
+  parentId: z.string().uuid().optional().nullable(), // null = categoria pai, UUID = subcategoria
 });
 
 export const updateCategorySchema = createCategorySchema.partial();

@@ -13,64 +13,192 @@ import { Label } from "@/shared/components/ui/label";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Category } from "./CategoryBadge";
 import {
+  // Dinheiro/Finanças
   Banknote,
-  Briefcase,
+  Wallet,
+  CircleDollarSign,
   TrendingUp,
-  CircleDot,
-  Utensils,
-  Car,
+  Award,
+  RotateCcw,
+
+  // Trabalho
+  Briefcase,
+
+  // Casa/Moradia
   Home,
-  Heart,
-  GraduationCap,
-  Gamepad2,
-  Receipt,
-  ShoppingBag,
+  Building,
+  Building2,
+  Zap,
+  Wrench,
+  Cpu,
+  Sofa,
+
+  // Transporte
+  Car,
+  Fuel,
+  Bus,
   Plane,
-  Gift,
-  Coffee,
-  Shirt,
-  Smartphone,
-  Music,
+  Gauge,
+  Settings,
+  FileText,
+
+  // Alimentação
+  Utensils,
+  ShoppingCart,
+  Croissant,
+  Pill,
+
+  // Saúde
+  Heart,
+  ShieldCheck,
+  Cross,
+  Stethoscope,
+  Syringe,
+  Sparkles,
+
+  // Educação
+  GraduationCap,
+  School,
+  BookOpen,
   Book,
+
+  // Lazer
+  PartyPopper,
+  Clapperboard,
+  Palette,
+  Wine,
+  Gamepad2,
+
+  // Streaming/Serviços
+  Tv,
+  Play,
+  Music,
+  Cloud,
+  Bot,
+
+  // Tributos
+  Landmark,
+  FileSpreadsheet,
+  BadgeCheck,
+  AlertTriangle,
+  Flame,
+  Receipt,
+
+  // Compras
+  ShoppingBag,
+  Shirt,
+  Gift,
+  Smartphone,
+
+  // Outros
+  CircleDot,
+  ArrowRightLeft,
+  HelpCircle,
+
+  // Extras úteis
+  Coffee,
   Dumbbell,
   Baby,
   Dog,
-  Wrench,
-  Sparkles,
+
   type LucideIcon,
 } from "lucide-react";
 
 const colorOptions = [
   "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9",
-  "#6366f1", "#8b5cf6", "#ec4899", "#ef4444", "#f97316",
-  "#eab308", "#84cc16",
+  "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#f472b6",
+  "#ef4444", "#f97316", "#eab308", "#84cc16", "#64748b",
+  "#9ca3af",
 ];
 
 const iconOptions: { id: string; icon: LucideIcon; label: string }[] = [
+  // Dinheiro/Finanças
   { id: "banknote", icon: Banknote, label: "Dinheiro" },
-  { id: "briefcase", icon: Briefcase, label: "Trabalho" },
+  { id: "wallet", icon: Wallet, label: "Carteira" },
+  { id: "circle-dollar-sign", icon: CircleDollarSign, label: "Cifrão" },
   { id: "trending-up", icon: TrendingUp, label: "Investimento" },
-  { id: "circle-dot", icon: CircleDot, label: "Genérico" },
-  { id: "utensils", icon: Utensils, label: "Alimentação" },
-  { id: "car", icon: Car, label: "Transporte" },
-  { id: "home", icon: Home, label: "Moradia" },
-  { id: "heart", icon: Heart, label: "Saúde" },
-  { id: "graduation-cap", icon: GraduationCap, label: "Educação" },
-  { id: "gamepad2", icon: Gamepad2, label: "Lazer" },
-  { id: "receipt", icon: Receipt, label: "Contas" },
-  { id: "shopping-bag", icon: ShoppingBag, label: "Compras" },
+  { id: "award", icon: Award, label: "Prêmio" },
+  { id: "rotate-ccw", icon: RotateCcw, label: "Reembolso" },
+
+  // Trabalho
+  { id: "briefcase", icon: Briefcase, label: "Trabalho" },
+
+  // Casa/Moradia
+  { id: "home", icon: Home, label: "Casa" },
+  { id: "building", icon: Building, label: "Prédio" },
+  { id: "building2", icon: Building2, label: "Banco" },
+  { id: "zap", icon: Zap, label: "Energia" },
+  { id: "wrench", icon: Wrench, label: "Manutenção" },
+  { id: "cpu", icon: Cpu, label: "Smart Home" },
+  { id: "sofa", icon: Sofa, label: "Móveis" },
+
+  // Transporte
+  { id: "car", icon: Car, label: "Carro" },
+  { id: "fuel", icon: Fuel, label: "Combustível" },
+  { id: "bus", icon: Bus, label: "Ônibus" },
   { id: "plane", icon: Plane, label: "Viagem" },
-  { id: "gift", icon: Gift, label: "Presente" },
+  { id: "gauge", icon: Gauge, label: "Velocímetro" },
+  { id: "settings", icon: Settings, label: "Configurações" },
+  { id: "file-text", icon: FileText, label: "Documento" },
+
+  // Alimentação
+  { id: "utensils", icon: Utensils, label: "Alimentação" },
+  { id: "shopping-cart", icon: ShoppingCart, label: "Supermercado" },
+  { id: "croissant", icon: Croissant, label: "Padaria" },
+  { id: "pill", icon: Pill, label: "Suplemento" },
   { id: "coffee", icon: Coffee, label: "Café" },
-  { id: "shirt", icon: Shirt, label: "Roupas" },
-  { id: "smartphone", icon: Smartphone, label: "Tecnologia" },
-  { id: "music", icon: Music, label: "Música" },
-  { id: "book", icon: Book, label: "Livros" },
+
+  // Saúde
+  { id: "heart", icon: Heart, label: "Saúde" },
+  { id: "shield-check", icon: ShieldCheck, label: "Plano" },
+  { id: "cross", icon: Cross, label: "Farmácia" },
+  { id: "stethoscope", icon: Stethoscope, label: "Médico" },
+  { id: "syringe", icon: Syringe, label: "Procedimento" },
+  { id: "sparkles", icon: Sparkles, label: "Bem-estar" },
   { id: "dumbbell", icon: Dumbbell, label: "Academia" },
+
+  // Educação
+  { id: "graduation-cap", icon: GraduationCap, label: "Educação" },
+  { id: "school", icon: School, label: "Escola" },
+  { id: "book-open", icon: BookOpen, label: "Curso" },
+  { id: "book", icon: Book, label: "Livro" },
+
+  // Lazer
+  { id: "party-popper", icon: PartyPopper, label: "Lazer" },
+  { id: "clapperboard", icon: Clapperboard, label: "Cinema" },
+  { id: "palette", icon: Palette, label: "Arte" },
+  { id: "wine", icon: Wine, label: "Bar" },
+  { id: "gamepad2", icon: Gamepad2, label: "Games" },
+
+  // Streaming/Serviços
+  { id: "tv", icon: Tv, label: "TV" },
+  { id: "play", icon: Play, label: "Streaming" },
+  { id: "music", icon: Music, label: "Música" },
+  { id: "cloud", icon: Cloud, label: "Cloud" },
+  { id: "bot", icon: Bot, label: "IA" },
+
+  // Tributos
+  { id: "landmark", icon: Landmark, label: "Governo" },
+  { id: "file-spreadsheet", icon: FileSpreadsheet, label: "Imposto" },
+  { id: "badge-check", icon: BadgeCheck, label: "Certificado" },
+  { id: "alert-triangle", icon: AlertTriangle, label: "Multa" },
+  { id: "flame", icon: Flame, label: "Incêndio" },
+  { id: "receipt", icon: Receipt, label: "Recibo" },
+
+  // Compras
+  { id: "shopping-bag", icon: ShoppingBag, label: "Compras" },
+  { id: "shirt", icon: Shirt, label: "Roupas" },
+  { id: "gift", icon: Gift, label: "Presente" },
+  { id: "smartphone", icon: Smartphone, label: "Eletrônico" },
+
+  // Outros
+  { id: "circle-dot", icon: CircleDot, label: "Genérico" },
+  { id: "arrow-right-left", icon: ArrowRightLeft, label: "Transferência" },
+  { id: "help-circle", icon: HelpCircle, label: "Indefinido" },
+
+  // Extras
   { id: "baby", icon: Baby, label: "Filhos" },
   { id: "dog", icon: Dog, label: "Pets" },
-  { id: "wrench", icon: Wrench, label: "Manutenção" },
-  { id: "sparkles", icon: Sparkles, label: "Outros" },
 ];
 
 export function getIconById(iconId: string): LucideIcon {
@@ -147,8 +275,8 @@ export function CategoryModal({
 
           <div className="space-y-2">
             <Label>Ícone</Label>
-            <ScrollArea className="h-32 rounded-md border p-2">
-              <div className="grid grid-cols-6 gap-2">
+            <ScrollArea className="h-40 rounded-md border p-2">
+              <div className="grid grid-cols-8 gap-2">
                 {iconOptions.map(({ id, icon: Icon, label }) => (
                   <button
                     key={id}

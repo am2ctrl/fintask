@@ -34,6 +34,7 @@ export interface DbCategory {
   type: "income" | "expense";
   color: string;
   icon: string | null;
+  parent_id: string | null;
   user_id: string | null;
   created_at: string;
 }
