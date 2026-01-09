@@ -1,18 +1,28 @@
-import { useState } from "react";
-import { Plus, CircleDot, type LucideIcon } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, type LucideIcon } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
-import { CategoryCard } from "@/features/categories/components/CategoryCard";
+import { CategoryGroup, OrphanCategoryCard } from "@/features/categories/components/CategoryGroup";
 import { CategoryModal, getIconIdFromComponent, getIconById } from "@/features/categories/components/CategoryModal";
-import { defaultCategories, type Category } from "@/features/categories/components/CategoryBadge";
+import { type Category } from "@/features/categories/components/CategoryBadge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/shared/hooks/use-toast";
 import { apiRequest } from "@/shared/lib/queryClient";
+
+interface CategoryWithParent extends Category {
+  parentId?: string | null;
+}
+
+interface GroupedCategories {
+  parent: CategoryWithParent;
+  children: CategoryWithParent[];
+}
 
 export default function Categories() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [activeTab, setActiveTab] = useState<"income" | "expense">("expense");
+  const [parentIdForNew, setParentIdForNew] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -21,17 +31,65 @@ export default function Categories() {
     queryKey: ["/api/categories"],
   });
 
-  const categories: Category[] = (categoriesRaw || []).map((cat) => ({
-    ...cat,
-    icon: typeof cat.icon === "string" ? getIconById(cat.icon.toLowerCase()) : cat.icon,
-  }));
+  const categories: CategoryWithParent[] = useMemo(() => {
+    return (categoriesRaw || []).map((cat) => ({
+      ...cat,
+      icon: typeof cat.icon === "string" ? getIconById(cat.icon.toLowerCase()) : cat.icon,
+      parentId: cat.parentId || null,
+    }));
+  }, [categoriesRaw]);
 
-  const incomeCategories = categories.filter((c) => c.type === "income");
-  const expenseCategories = categories.filter((c) => c.type === "expense");
+  // Agrupar categorias por pai
+  const groupedCategories = useMemo(() => {
+    const incomeGroups: GroupedCategories[] = [];
+    const expenseGroups: GroupedCategories[] = [];
+    const orphanIncome: CategoryWithParent[] = [];
+    const orphanExpense: CategoryWithParent[] = [];
+
+    // Encontrar categorias pai (parentId === null)
+    const parentCategories = categories.filter((c) => c.parentId === null || c.parentId === undefined);
+
+    // Encontrar subcategorias
+    const subcategories = categories.filter((c) => c.parentId !== null && c.parentId !== undefined);
+
+    // Agrupar
+    parentCategories.forEach((parent) => {
+      const children = subcategories.filter((sub) => sub.parentId === parent.id);
+
+      const group: GroupedCategories = { parent, children };
+
+      if (parent.type === "income") {
+        incomeGroups.push(group);
+      } else {
+        expenseGroups.push(group);
+      }
+    });
+
+    // Categorias órfãs (subcategorias sem pai válido encontrado)
+    subcategories.forEach((sub) => {
+      const hasParent = parentCategories.some((p) => p.id === sub.parentId);
+      if (!hasParent) {
+        if (sub.type === "income") {
+          orphanIncome.push(sub);
+        } else {
+          orphanExpense.push(sub);
+        }
+      }
+    });
+
+    return {
+      income: { groups: incomeGroups, orphans: orphanIncome },
+      expense: { groups: expenseGroups, orphans: orphanExpense },
+    };
+  }, [categories]);
+
+  // Contagem de categorias por tipo
+  const incomeCount = categories.filter((c) => c.type === "income").length;
+  const expenseCount = categories.filter((c) => c.type === "expense").length;
 
   // Mutation para criar categoria
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; color: string; type: "income" | "expense"; icon: string }) => {
+    mutationFn: async (data: { name: string; color: string; type: "income" | "expense"; icon: string; parentId?: string | null }) => {
       const response = await apiRequest("POST", "/api/categories", data);
 
       if (!response.ok) {
@@ -99,9 +157,11 @@ export default function Categories() {
         type: data.type,
         color: data.color,
         icon: iconId,
+        parentId: parentIdForNew,
       });
     }
     setEditingCategory(null);
+    setParentIdForNew(null);
   };
 
   // Mutation para deletar categoria
@@ -133,6 +193,7 @@ export default function Categories() {
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
     setActiveTab(category.type);
+    setParentIdForNew(null);
     setModalOpen(true);
   };
 
@@ -142,7 +203,65 @@ export default function Categories() {
 
   const handleAddNew = () => {
     setEditingCategory(null);
+    setParentIdForNew(null);
     setModalOpen(true);
+  };
+
+  const handleAddSubcategory = (parentId: string) => {
+    setEditingCategory(null);
+    setParentIdForNew(parentId);
+    setModalOpen(true);
+  };
+
+  const renderCategoryGroups = (type: "income" | "expense") => {
+    const { groups, orphans } = groupedCategories[type];
+
+    if (groups.length === 0 && orphans.length === 0) {
+      return (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>Nenhuma categoria de {type === "income" ? "receita" : "despesa"} encontrada</p>
+          <Button variant="ghost" onClick={handleAddNew} className="mt-2">
+            Criar primeira categoria
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* Grupos hierárquicos */}
+        {groups.map((group) => (
+          <CategoryGroup
+            key={group.parent.id}
+            parentCategory={group.parent}
+            subcategories={group.children}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddSubcategory={handleAddSubcategory}
+            defaultExpanded={false}
+          />
+        ))}
+
+        {/* Categorias órfãs (customizadas pelo usuário sem hierarquia) */}
+        {orphans.length > 0 && (
+          <div className="mt-6">
+            <p className="text-sm text-muted-foreground mb-3 font-medium">
+              Categorias Personalizadas
+            </p>
+            <div className="space-y-2">
+              {orphans.map((category) => (
+                <OrphanCategoryCard
+                  key={category.id}
+                  category={category}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -151,7 +270,7 @@ export default function Categories() {
         <div>
           <h1 className="text-2xl font-semibold">Categorias</h1>
           <p className="text-sm text-muted-foreground">
-            Organize suas transações com categorias personalizadas
+            Organize suas transações com categorias e subcategorias
           </p>
         </div>
         <Button onClick={handleAddNew} data-testid="button-new-category">
@@ -163,55 +282,19 @@ export default function Categories() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "income" | "expense")}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="expense" data-testid="tab-expense">
-            Despesas ({expenseCategories.length})
+            Despesas ({expenseCount})
           </TabsTrigger>
           <TabsTrigger value="income" data-testid="tab-income">
-            Receitas ({incomeCategories.length})
+            Receitas ({incomeCount})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="expense" className="mt-6">
-          <div className="grid gap-3">
-            {expenseCategories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                transactionCount={Math.floor(Math.random() * 50)}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-            {expenseCategories.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Nenhuma categoria de despesa encontrada</p>
-                <Button variant="ghost" onClick={handleAddNew}>
-                  Criar primeira categoria
-                </Button>
-              </div>
-            )}
-          </div>
+          {renderCategoryGroups("expense")}
         </TabsContent>
 
         <TabsContent value="income" className="mt-6">
-          <div className="grid gap-3">
-            {incomeCategories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                transactionCount={Math.floor(Math.random() * 20)}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-            {incomeCategories.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Nenhuma categoria de receita encontrada</p>
-                <Button variant="ghost" onClick={handleAddNew}>
-                  Criar primeira categoria
-                </Button>
-              </div>
-            )}
-          </div>
+          {renderCategoryGroups("income")}
         </TabsContent>
       </Tabs>
 
@@ -219,7 +302,10 @@ export default function Categories() {
         open={modalOpen}
         onOpenChange={(open) => {
           setModalOpen(open);
-          if (!open) setEditingCategory(null);
+          if (!open) {
+            setEditingCategory(null);
+            setParentIdForNew(null);
+          }
         }}
         category={editingCategory}
         type={activeTab}
