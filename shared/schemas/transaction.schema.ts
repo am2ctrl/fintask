@@ -18,6 +18,9 @@ const baseTransactionSchema = z.object({
   cardId: z.string().uuid().optional().nullable(),
   familyMemberId: z.string().uuid().optional().nullable(),
   dueDate: z.string().datetime().optional().nullable(),
+  isPaid: z.boolean().optional().default(false),
+  isRecurring: z.boolean().optional().default(false),
+  recurringMonths: z.number().int().positive().optional().nullable(),
 });
 
 // Schema para criar transação (com validação de parcelamento)

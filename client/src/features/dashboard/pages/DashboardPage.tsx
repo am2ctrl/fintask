@@ -181,6 +181,7 @@ export default function Dashboard() {
           categoryName: t.category.name,
           categoryColor: t.category.color,
           daysUntilDue,
+          isPaid: (t as any).isPaid || false,
         };
       });
   }, [transactions]);

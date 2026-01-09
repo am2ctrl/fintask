@@ -14,6 +14,7 @@ interface UpcomingExpense {
   categoryName: string;
   categoryColor: string;
   daysUntilDue: number;
+  isPaid?: boolean;
 }
 
 interface UpcomingExpensesCardProps {
@@ -26,8 +27,9 @@ function UpcomingExpensesCardComponent({ expenses, maxItems = 5 }: UpcomingExpen
     const today = startOfDay(new Date());
     const next30Days = addDays(today, 30);
 
-    // Inclui despesas atrasadas (antes de hoje) e próximas (até 30 dias)
+    // Filtra despesas não pagas, atrasadas (antes de hoje) e próximas (até 30 dias)
     return expenses
+      .filter(e => !e.isPaid) // Remove transações já pagas
       .filter(e => isBefore(e.dueDate, next30Days)) // Até 30 dias no futuro ou qualquer atrasada
       .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
       .slice(0, maxItems);

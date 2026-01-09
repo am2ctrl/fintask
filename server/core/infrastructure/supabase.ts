@@ -51,6 +51,10 @@ export interface DbTransaction {
   installments_total: number | null;
   card_id: string | null;
   user_id: string | null;
+  due_date: string | null;
+  is_paid: boolean;
+  is_recurring: boolean;
+  recurring_months: number | null;
   created_at: string;
 }
 

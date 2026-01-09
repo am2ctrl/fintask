@@ -34,6 +34,10 @@ export interface Transaction {
     id: string;
     name: string;
   } | null;
+  dueDate?: Date | null;
+  isPaid?: boolean;
+  isRecurring?: boolean;
+  recurringMonths?: number | null;
 }
 
 export const transactionModeInfo = {

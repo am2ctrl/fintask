@@ -37,6 +37,9 @@ export interface Transaction {
   cardId: string | null;
   familyMemberId: string | null;
   dueDate: Date | null;
+  isPaid: boolean;
+  isRecurring: boolean;
+  recurringMonths: number | null;
 }
 
 export interface InsertTransaction {
@@ -52,6 +55,9 @@ export interface InsertTransaction {
   cardId?: string | null;
   familyMemberId?: string | null;
   dueDate?: Date | null;
+  isPaid?: boolean;
+  isRecurring?: boolean;
+  recurringMonths?: number | null;
 }
 
 export interface CreditCard {
@@ -93,6 +99,7 @@ export interface IStorage {
   getAllTransactions(userId?: string): Promise<Transaction[]>;
   getTransaction(id: string): Promise<Transaction | undefined>;
   createTransaction(transaction: InsertTransaction, userId?: string): Promise<Transaction>;
+  batchCreateTransactions(transactions: InsertTransaction[], userId: string): Promise<Transaction[]>;
   updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: string): Promise<void>;
 
@@ -134,7 +141,10 @@ function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
     installmentsTotal: dbTx.installments_total,
     cardId: dbTx.card_id,
     familyMemberId: (dbTx as any).family_member_id || null,
-    dueDate: (dbTx as any).due_date ? new Date((dbTx as any).due_date) : null,
+    dueDate: dbTx.due_date ? new Date(dbTx.due_date) : null,
+    isPaid: dbTx.is_paid || false,
+    isRecurring: dbTx.is_recurring || false,
+    recurringMonths: dbTx.recurring_months || null,
   };
 }
 
@@ -272,6 +282,9 @@ export class SupabaseStorage implements IStorage {
         card_id: transaction.cardId || null,
         family_member_id: transaction.familyMemberId || null,
         due_date: transaction.dueDate ? transaction.dueDate.toISOString().split("T")[0] : null,
+        is_paid: transaction.isPaid || false,
+        is_recurring: transaction.isRecurring || false,
+        recurring_months: transaction.recurringMonths || null,
         user_id: userId || null,
       })
       .select()
@@ -295,6 +308,9 @@ export class SupabaseStorage implements IStorage {
     if (updates.cardId !== undefined) updateData.card_id = updates.cardId;
     if (updates.familyMemberId !== undefined) updateData.family_member_id = updates.familyMemberId;
     if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate ? updates.dueDate.toISOString().split("T")[0] : null;
+    if (updates.isPaid !== undefined) updateData.is_paid = updates.isPaid;
+    if (updates.isRecurring !== undefined) updateData.is_recurring = updates.isRecurring;
+    if (updates.recurringMonths !== undefined) updateData.recurring_months = updates.recurringMonths;
 
     const { data, error } = await supabase
       .from("transactions")
@@ -331,6 +347,9 @@ export class SupabaseStorage implements IStorage {
         card_id: tx.cardId || null,
         family_member_id: tx.familyMemberId || null,
         due_date: tx.dueDate ? tx.dueDate.toISOString().split("T")[0] : null,
+        is_paid: tx.isPaid || false,
+        is_recurring: tx.isRecurring || false,
+        recurring_months: tx.recurringMonths || null,
         user_id: userId,
       };
 

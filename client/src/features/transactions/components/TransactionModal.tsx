@@ -14,6 +14,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -65,6 +66,9 @@ export function TransactionModal({
   const [installmentNumber, setInstallmentNumber] = useState("1");
   const [installmentsTotal, setInstallmentsTotal] = useState("2");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [isPaid, setIsPaid] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringMonths, setRecurringMonths] = useState("");
 
   useEffect(() => {
     if (transaction) {
@@ -77,7 +81,10 @@ export function TransactionModal({
       setMode(transaction.mode || "avulsa");
       setInstallmentNumber(transaction.installmentNumber?.toString() || "1");
       setInstallmentsTotal(transaction.installmentsTotal?.toString() || "2");
-      setDueDate((transaction as any).dueDate ? new Date((transaction as any).dueDate) : undefined);
+      setDueDate(transaction.dueDate ? new Date(transaction.dueDate) : undefined);
+      setIsPaid(transaction.isPaid || false);
+      setIsRecurring(transaction.isRecurring || false);
+      setRecurringMonths(transaction.recurringMonths?.toString() || "");
     } else {
       setType("expense");
       setAmount("");
@@ -89,6 +96,9 @@ export function TransactionModal({
       setInstallmentNumber("1");
       setInstallmentsTotal("2");
       setDueDate(undefined);
+      setIsPaid(false);
+      setIsRecurring(false);
+      setRecurringMonths("");
     }
   }, [transaction, open]);
 
@@ -100,6 +110,7 @@ export function TransactionModal({
 
     const parsedInstallmentNumber = parseInt(installmentNumber) || 1;
     const parsedInstallmentsTotal = parseInt(installmentsTotal) || 2;
+    const parsedRecurringMonths = recurringMonths ? parseInt(recurringMonths) : null;
 
     if (mode === "parcelada") {
       if (parsedInstallmentsTotal < 2 || parsedInstallmentsTotal > 48) return;
@@ -119,6 +130,9 @@ export function TransactionModal({
         installmentsTotal: parsedInstallmentsTotal,
       } : {}),
       ...(type === "expense" && dueDate ? { dueDate } : {}),
+      isPaid,
+      isRecurring,
+      recurringMonths: parsedRecurringMonths,
     } as any);
     onOpenChange(false);
   };
@@ -341,6 +355,85 @@ export function TransactionModal({
                   Limpar vencimento
                 </Button>
               )}
+            </div>
+          )}
+
+          {type === "expense" && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-muted">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isPaid"
+                  checked={isPaid}
+                  onCheckedChange={(checked) => setIsPaid(checked as boolean)}
+                  data-testid="checkbox-is-paid"
+                />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="isPaid" className="text-sm font-normal cursor-pointer">
+                    Esta conta já está paga
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">
+                        Marque esta opção se você está cadastrando uma transação antiga que já foi paga.
+                        Contas marcadas como pagas não aparecerão no controle de pagamento do dashboard.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isRecurring"
+                    checked={isRecurring}
+                    onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+                    data-testid="checkbox-is-recurring"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="isRecurring" className="text-sm font-normal cursor-pointer">
+                      Transação recorrente mensal
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="font-medium">Cria automaticamente nos próximos meses</p>
+                        <p className="text-xs mt-1">
+                          Útil para despesas que se repetem mensalmente como aluguel, internet, Netflix.
+                          O sistema criará automaticamente as próximas transações.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+
+                {isRecurring && (
+                  <div className="ml-6 space-y-1.5">
+                    <Label htmlFor="recurringMonths" className="text-xs">
+                      Repetir por quantos meses? (opcional)
+                    </Label>
+                    <Input
+                      id="recurringMonths"
+                      type="number"
+                      min="1"
+                      max="60"
+                      placeholder="Ex: 12 (deixe vazio para indefinido)"
+                      value={recurringMonths}
+                      onChange={(e) => setRecurringMonths(e.target.value)}
+                      className="text-sm"
+                      data-testid="input-recurring-months"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe vazio para repetir indefinidamente
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { storage } from '../../core/infrastructure/supabaseStorage';
 import { validateUUID } from '../../../shared/utils/validation';
 import { logger } from '../../core/logger';
 import { mapCategoryId, getCategoryName } from '../../utils/categoryMapping';
+import { processTransaction } from '../../utils/transactionGenerators';
 
 export function registerTransactionRoutes(app: Express) {
   app.post("/api/transactions/batch", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
@@ -138,10 +139,11 @@ export function registerTransactionRoutes(app: Express) {
     try {
       const userId = req.userId!;
 
-      // ✅ NOVO: Mapear categoryId numérico para UUID
+      // Mapear categoryId numérico para UUID
       const categoryId = mapCategoryId(req.body.categoryId);
 
-      const transaction = await storage.createTransaction({
+      // Criar objeto de transação base
+      const baseTransaction = {
         date: new Date(req.body.date),
         amount: req.body.amount,
         type: req.body.type,
@@ -153,8 +155,25 @@ export function registerTransactionRoutes(app: Express) {
         installmentsTotal: req.body.installmentsTotal || null,
         cardId: req.body.cardId || null,
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
-      }, userId);
-      res.json(transaction);
+        isPaid: req.body.isPaid || false,
+        isRecurring: req.body.isRecurring || false,
+        recurringMonths: req.body.recurringMonths || null,
+      };
+
+      // Processar transação (gera recorrentes ou parceladas se necessário)
+      const transactionsToCreate = processTransaction(baseTransaction);
+
+      // Se for apenas uma transação, usar createTransaction
+      if (transactionsToCreate.length === 1) {
+        const transaction = await storage.createTransaction(transactionsToCreate[0], userId);
+        res.json(transaction);
+      } else {
+        // Se forem múltiplas (recorrentes ou parceladas), usar batchCreate
+        const createdTransactions = await storage.batchCreateTransactions(transactionsToCreate, userId);
+        logger.info(`Created ${createdTransactions.length} transactions (recurring or installments)`);
+        // Retorna a primeira transação criada para manter compatibilidade
+        res.json(createdTransactions[0]);
+      }
     } catch (error) {
       logger.error("Error creating transaction:", error);
       res.status(500).json({ error: "Failed to create transaction" });
@@ -163,7 +182,7 @@ export function registerTransactionRoutes(app: Express) {
 
   app.patch("/api/transactions/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // ✅ NOVO: Mapear categoryId se presente
+      // Mapear categoryId se presente
       const categoryId = req.body.categoryId ? mapCategoryId(req.body.categoryId) : undefined;
 
       const transaction = await storage.updateTransaction(req.params.id, {
@@ -178,6 +197,9 @@ export function registerTransactionRoutes(app: Express) {
         installmentsTotal: req.body.installmentsTotal,
         cardId: req.body.cardId,
         dueDate: req.body.dueDate !== undefined ? (req.body.dueDate ? new Date(req.body.dueDate) : null) : undefined,
+        isPaid: req.body.isPaid,
+        isRecurring: req.body.isRecurring,
+        recurringMonths: req.body.recurringMonths,
       });
       res.json(transaction);
     } catch (error) {
