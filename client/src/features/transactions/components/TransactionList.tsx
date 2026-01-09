@@ -1,5 +1,4 @@
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useMemo } from "react";
 import { Card } from "@/shared/components/ui/card";
 import { TransactionItem, type Transaction } from "./TransactionItem";
 import { FileX } from "lucide-react";
@@ -9,36 +8,47 @@ interface TransactionListProps {
   transactions: Transaction[];
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
+  onToggleStatus?: (transaction: Transaction) => void;
   onAddNew?: () => void;
   showHeader?: boolean;
+  showRunningBalance?: boolean;
   maxItems?: number;
 }
 
-function groupByMonth(transactions: Transaction[]): Map<string, Transaction[]> {
-  const groups = new Map<string, Transaction[]>();
-  
-  transactions.forEach((transaction) => {
-    const monthKey = format(transaction.date, "MMMM yyyy", { locale: ptBR });
-    const existing = groups.get(monthKey) || [];
-    groups.set(monthKey, [...existing, transaction]);
-  });
+function calculateRunningBalances(transactions: Transaction[]): Map<string, number> {
+  const sorted = [...transactions].sort((a, b) => a.date.getTime() - b.date.getTime());
+  let balance = 0;
+  const balances = new Map<string, number>();
 
-  return groups;
+  for (const t of sorted) {
+    balance += t.type === "income" ? t.amount : -t.amount;
+    balances.set(t.id, balance);
+  }
+  return balances;
 }
 
 export function TransactionList({
   transactions,
   onEdit,
   onDelete,
+  onToggleStatus,
   onAddNew,
   showHeader = true,
+  showRunningBalance = true,
   maxItems,
 }: TransactionListProps) {
-  const displayTransactions = maxItems 
-    ? transactions.slice(0, maxItems) 
+  const displayTransactions = maxItems
+    ? transactions.slice(0, maxItems)
     : transactions;
 
-  const grouped = groupByMonth(displayTransactions);
+  const runningBalances = useMemo(() => {
+    if (!showRunningBalance) return new Map<string, number>();
+    return calculateRunningBalances(displayTransactions);
+  }, [displayTransactions, showRunningBalance]);
+
+  const sortedForDisplay = useMemo(() => {
+    return [...displayTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [displayTransactions]);
 
   if (transactions.length === 0) {
     return (
@@ -60,27 +70,25 @@ export function TransactionList({
   return (
     <Card className="overflow-hidden" data-testid="list-transactions">
       {showHeader && (
-        <div className="p-4 border-b flex items-center justify-between gap-4 bg-muted/30">
-          <h3 className="font-semibold">Transações Recentes</h3>
+        <div className="hidden md:grid grid-cols-[100px_1fr_100px_120px_120px_90px] gap-4 p-4 border-b bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div>Data</div>
+          <div>Descrição</div>
+          <div className="text-center">Situação</div>
+          <div className="text-right">Valor (R$)</div>
+          {showRunningBalance && <div className="text-right">Saldo (R$)</div>}
+          <div className="text-center">Ações</div>
         </div>
       )}
       <div className="divide-y">
-        {Array.from(grouped.entries()).map(([month, items]) => (
-          <div key={month}>
-            <div className="sticky top-0 z-50 px-4 py-2 bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {month}
-            </div>
-            <div className="divide-y">
-              {items.map((transaction) => (
-                <TransactionItem
-                  key={transaction.id}
-                  transaction={transaction}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              ))}
-            </div>
-          </div>
+        {sortedForDisplay.map((transaction) => (
+          <TransactionItem
+            key={transaction.id}
+            transaction={transaction}
+            runningBalance={showRunningBalance ? runningBalances.get(transaction.id) : undefined}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onToggleStatus={onToggleStatus}
+          />
         ))}
       </div>
     </Card>

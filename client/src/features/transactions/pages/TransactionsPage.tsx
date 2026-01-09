@@ -2,11 +2,13 @@ import { useState, useMemo, useEffect } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { isWithinInterval } from "date-fns";
 import { Button } from "@/shared/components/ui/button";
 import { TransactionList } from "@/features/transactions/components/TransactionList";
 import { TransactionModal } from "@/features/transactions/components/TransactionModal";
 import { TransactionFilters, type FilterState } from "@/features/transactions/components/TransactionFilters";
-import { formatCurrency } from "@/features/dashboard/components/SummaryCard";
+import { MonthNavigator, getMonthDateRange } from "@/features/transactions/components/MonthNavigator";
+import { TransactionSummaryCards } from "@/features/transactions/components/TransactionSummaryCards";
 import type { Transaction } from "@/features/transactions/components/TransactionItem";
 import type { Category } from "@/features/categories/components/CategoryBadge";
 import { CircleDot } from "lucide-react";
@@ -27,6 +29,8 @@ interface ApiTransaction {
   installmentsTotal?: number | null;
   cardId?: string | null;
   familyMemberId?: string | null;
+  dueDate?: string | null;
+  isPaid?: boolean;
 }
 
 interface ApiCategory {
@@ -41,16 +45,32 @@ export default function Transactions() {
   const [location] = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    type: "all",
-    categoryId: "all",
-    familyMemberId: "all",
-    dateFrom: undefined,
-    dateTo: undefined,
-    periodPreset: "all",
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const { dateFrom, dateTo } = getMonthDateRange(new Date());
+    return {
+      search: "",
+      type: "all",
+      categoryId: "all",
+      familyMemberId: "all",
+      dateFrom,
+      dateTo,
+      periodPreset: "thismonth",
+    };
   });
   const { toast } = useToast();
+
+  // Atualizar filtros quando o mês mudar
+  const handleMonthChange = (date: Date) => {
+    setCurrentMonth(date);
+    const { dateFrom, dateTo } = getMonthDateRange(date);
+    setFilters((prev) => ({
+      ...prev,
+      dateFrom,
+      dateTo,
+      periodPreset: "thismonth",
+    }));
+  };
 
   // Ler parâmetros da URL e aplicar filtro
   useEffect(() => {
@@ -105,12 +125,14 @@ export default function Transactions() {
       installmentsTotal: t.installmentsTotal ?? undefined,
       cardId: t.cardId ?? undefined,
       familyMemberId: t.familyMemberId ?? undefined,
-    } as any));
+      dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
+      isPaid: t.isPaid ?? false,
+    } as Transaction));
   }, [apiTransactions, categoriesMap]);
 
   const filteredTransactions = useMemo(() => {
     return transactions
-      .filter((t: any) => {
+      .filter((t) => {
         if (filters.search && !t.name.toLowerCase().includes(filters.search.toLowerCase())) {
           return false;
         }
@@ -122,27 +144,27 @@ export default function Transactions() {
         }
         if (filters.familyMemberId !== "all") {
           if (filters.familyMemberId === "main") {
-            // Transações do usuário principal (sem familyMemberId)
-            if (t.familyMemberId) return false;
+            if ((t as any).familyMemberId) return false;
           } else {
-            // Transações de um membro específico
-            if (t.familyMemberId !== filters.familyMemberId) return false;
+            if ((t as any).familyMemberId !== filters.familyMemberId) return false;
           }
         }
-        if (filters.dateFrom && t.date < filters.dateFrom) {
-          return false;
-        }
-        if (filters.dateTo && t.date > filters.dateTo) {
-          return false;
+        if (filters.dateFrom && filters.dateTo) {
+          if (!isWithinInterval(t.date, { start: filters.dateFrom, end: filters.dateTo })) {
+            return false;
+          }
+        } else {
+          if (filters.dateFrom && t.date < filters.dateFrom) {
+            return false;
+          }
+          if (filters.dateTo && t.date > filters.dateTo) {
+            return false;
+          }
         }
         return true;
       })
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [transactions, filters]);
-
-  const totalFiltered = filteredTransactions.reduce((acc, t) => {
-    return t.type === "income" ? acc + t.amount : acc - t.amount;
-  }, 0);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -151,10 +173,10 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transacao criada com sucesso" });
+      toast({ title: "Sucesso", description: "Transação criada com sucesso" });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Falha ao criar transacao", variant: "destructive" });
+      toast({ title: "Erro", description: "Falha ao criar transação", variant: "destructive" });
     },
   });
 
@@ -165,7 +187,7 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transacao atualizada" });
+      toast({ title: "Sucesso", description: "Transação atualizada" });
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao atualizar", variant: "destructive" });
@@ -178,7 +200,7 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transacao removida" });
+      toast({ title: "Sucesso", description: "Transação removida" });
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao remover", variant: "destructive" });
@@ -203,6 +225,13 @@ export default function Transactions() {
     deleteMutation.mutate(id);
   };
 
+  const handleToggleStatus = (transaction: Transaction) => {
+    updateMutation.mutate({
+      id: transaction.id,
+      data: { isPaid: !transaction.isPaid },
+    });
+  };
+
   const isLoading = loadingTransactions || loadingCategories;
 
   if (isLoading) {
@@ -217,33 +246,40 @@ export default function Transactions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Transacoes</h1>
+          <h1 className="text-2xl font-semibold">Transações</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie todas as suas transacoes
+            Gerencie todas as suas transações
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)} data-testid="button-new-transaction">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Transacao
-        </Button>
+        <div className="flex items-center gap-4">
+          <MonthNavigator
+            currentMonth={currentMonth}
+            onMonthChange={handleMonthChange}
+          />
+          <Button onClick={() => setModalOpen(true)} data-testid="button-new-transaction">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Registro
+          </Button>
+        </div>
       </div>
+
+      <TransactionSummaryCards transactions={filteredTransactions} />
 
       <TransactionFilters filters={filters} onFiltersChange={setFilters} />
 
       <div className="flex items-center justify-between gap-4 text-sm">
         <span className="text-muted-foreground">
-          {filteredTransactions.length} transacoes encontradas
-        </span>
-        <span className={`font-mono font-semibold ${totalFiltered >= 0 ? "text-primary" : "text-destructive"}`}>
-          Saldo: {formatCurrency(totalFiltered)}
+          {filteredTransactions.length} transações encontradas
         </span>
       </div>
 
       <TransactionList
         transactions={filteredTransactions}
-        showHeader={false}
+        showHeader={true}
+        showRunningBalance={true}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onToggleStatus={handleToggleStatus}
         onAddNew={() => setModalOpen(true)}
       />
 

@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Pencil, Trash2, Repeat, CreditCard } from "lucide-react";
+import { Pencil, Trash2, Repeat, CreditCard, ChevronDown, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CategoryBadge, type Category } from "@/features/categories/components/CategoryBadge";
@@ -10,8 +10,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
 
 export type TransactionMode = "avulsa" | "parcelada";
+export type TransactionStatus = "paid" | "pending" | "overdue";
 
 export interface Transaction {
   id: string;
@@ -60,105 +68,155 @@ export const transactionModeInfo = {
   },
 };
 
-interface TransactionItemProps {
-  transaction: Transaction;
-  onEdit?: (transaction: Transaction) => void;
-  onDelete?: (id: string) => void;
+export function getTransactionStatus(transaction: Transaction): TransactionStatus {
+  if (transaction.isPaid) return "paid";
+  if (transaction.dueDate && new Date(transaction.dueDate) < new Date()) {
+    return "overdue";
+  }
+  return "pending";
 }
 
-export function TransactionItem({ transaction, onEdit, onDelete }: TransactionItemProps) {
+export const statusConfig: Record<TransactionStatus, { label: string; className: string }> = {
+  paid: { label: "Pago", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
+  pending: { label: "Em Aberto", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  overdue: { label: "Vencido", className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
+};
+
+interface TransactionItemProps {
+  transaction: Transaction;
+  runningBalance?: number;
+  onEdit?: (transaction: Transaction) => void;
+  onDelete?: (id: string) => void;
+  onToggleStatus?: (transaction: Transaction) => void;
+}
+
+export function TransactionItem({
+  transaction,
+  runningBalance,
+  onEdit,
+  onDelete,
+  onToggleStatus
+}: TransactionItemProps) {
   const mode = transaction.mode || "avulsa";
-  const modeInfo = transactionModeInfo[mode];
-  const ModeIcon = modeInfo.icon;
+  const status = getTransactionStatus(transaction);
+  const statusInfo = statusConfig[status];
 
   return (
     <div
-      className="group flex items-center justify-between gap-4 p-4 hover-elevate active-elevate-2 rounded-md"
+      className="group flex items-center justify-between gap-4 p-4 hover:bg-accent/50 transition-colors"
       data-testid={`row-transaction-${transaction.id}`}
     >
       <div className="flex items-center gap-4 flex-1 min-w-0">
-        <div className="text-sm text-muted-foreground w-20 shrink-0">
+        <div className="text-sm text-muted-foreground w-24 shrink-0">
           {format(transaction.date, "dd/MM/yyyy", { locale: ptBR })}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{transaction.name}</p>
-          {(mode !== "avulsa" || transaction.card || transaction.familyMember) && (
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              {mode === "parcelada" && transaction.installmentNumber && transaction.installmentsTotal && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 cursor-help">
-                      <CreditCard className="w-3 h-3 mr-1" />
-                      {transaction.installmentNumber}/{transaction.installmentsTotal}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Parcela {transaction.installmentNumber} de {transaction.installmentsTotal}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {transaction.card && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                  {transaction.card.name}
-                </Badge>
-              )}
-              {transaction.familyMember && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-purple-500/50 text-purple-600 dark:text-purple-400">
-                  {transaction.familyMember.name.split(' ')[0]}
-                </Badge>
-              )}
-              {transaction.card?.cardType && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-500/50 text-green-600 dark:text-green-400">
-                  {transaction.card.cardType === "physical" ? "Físico" : "Virtual"}
-                </Badge>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <CategoryBadge category={transaction.category} size="sm" />
+            {mode === "parcelada" && transaction.installmentNumber && transaction.installmentsTotal && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 cursor-help">
+                    <CreditCard className="w-3 h-3 mr-1" />
+                    {transaction.installmentNumber}/{transaction.installmentsTotal}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Parcela {transaction.installmentNumber} de {transaction.installmentsTotal}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {transaction.card && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                {transaction.card.name}
+              </Badge>
+            )}
+            {transaction.familyMember && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-purple-500/50 text-purple-600 dark:text-purple-400">
+                {transaction.familyMember.name.split(' ')[0]}
+              </Badge>
+            )}
+          </div>
         </div>
-        <CategoryBadge category={transaction.category} size="sm" />
       </div>
-      <div className="flex items-center gap-2">
+
+      <div className="flex items-center gap-3">
+        <Badge className={`${statusInfo.className} text-xs px-2 py-0.5 font-medium`}>
+          {statusInfo.label}
+        </Badge>
+
         <span
-          className={`font-mono text-sm font-semibold ${
+          className={`font-mono text-sm font-semibold w-28 text-right ${
             transaction.type === "income" ? "text-primary" : "text-destructive"
           }`}
         >
           {transaction.type === "income" ? "+" : "-"}
           {formatCurrency(transaction.amount)}
         </span>
-        <div className="flex items-center gap-1 invisible group-hover:visible">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit?.(transaction)}
-            data-testid={`button-edit-${transaction.id}`}
+
+        {runningBalance !== undefined && (
+          <span
+            className={`font-mono text-sm w-28 text-right ${
+              runningBalance >= 0 ? "text-foreground" : "text-destructive"
+            }`}
           >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDelete?.(transaction.id)}
-            data-testid={`button-delete-${transaction.id}`}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
+            {formatCurrency(runningBalance)}
+          </span>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8">
+              Ações
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit?.(transaction)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar lançamento
+            </DropdownMenuItem>
+            {onToggleStatus && (
+              <DropdownMenuItem onClick={() => onToggleStatus(transaction)}>
+                {transaction.isPaid ? (
+                  <>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Voltar para em aberto
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Marcar como pago
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onDelete?.(transaction.id)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir lançamento
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
 }
 
-export function ModeBadge({ mode, installmentNumber, installmentsTotal }: { 
-  mode: TransactionMode; 
-  installmentNumber?: number; 
+export function ModeBadge({ mode, installmentNumber, installmentsTotal }: {
+  mode: TransactionMode;
+  installmentNumber?: number;
   installmentsTotal?: number;
 }) {
   const info = transactionModeInfo[mode];
   const Icon = info.icon;
-  
+
   if (mode === "avulsa") return null;
-  
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
