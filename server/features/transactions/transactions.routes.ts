@@ -42,8 +42,9 @@ export function registerTransactionRoutes(app: Express) {
         }
 
         // Criar objeto limpo apenas com campos válidos - IMPORTANTE: não incluir outros campos!
+        // IMPORTANTE: Manter datas como strings YYYY-MM-DD para evitar problemas de timezone
         const cleanTransaction = {
-          date: new Date(t.date),
+          date: t.date, // Manter como string YYYY-MM-DD
           amount: typeof t.amount === 'number' ? t.amount : parseFloat(t.amount),
           type: t.type,
           categoryId,
@@ -54,7 +55,7 @@ export function registerTransactionRoutes(app: Express) {
           installmentsTotal: t.installmentsTotal || null,
           cardId,
           familyMemberId,
-          dueDate: t.dueDate ? new Date(t.dueDate) : null,
+          dueDate: t.dueDate || null, // Manter como string YYYY-MM-DD
         };
 
         if (index === 0) {
@@ -143,8 +144,9 @@ export function registerTransactionRoutes(app: Express) {
       const categoryId = mapCategoryId(req.body.categoryId);
 
       // Criar objeto de transação base
+      // IMPORTANTE: Manter datas como strings YYYY-MM-DD para evitar problemas de timezone
       const baseTransaction = {
-        date: new Date(req.body.date),
+        date: req.body.date, // Manter como string YYYY-MM-DD
         amount: req.body.amount,
         type: req.body.type,
         categoryId,
@@ -154,7 +156,7 @@ export function registerTransactionRoutes(app: Express) {
         installmentNumber: req.body.installmentNumber || null,
         installmentsTotal: req.body.installmentsTotal || null,
         cardId: req.body.cardId || null,
-        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
+        dueDate: req.body.dueDate || null, // Manter como string YYYY-MM-DD
         isPaid: req.body.isPaid || false,
         isRecurring: req.body.isRecurring || false,
         recurringMonths: req.body.recurringMonths || null,
@@ -185,8 +187,9 @@ export function registerTransactionRoutes(app: Express) {
       // Mapear categoryId se presente
       const categoryId = req.body.categoryId ? mapCategoryId(req.body.categoryId) : undefined;
 
+      // IMPORTANTE: Manter datas como strings YYYY-MM-DD para evitar problemas de timezone
       const transaction = await storage.updateTransaction(req.params.id, {
-        date: req.body.date ? new Date(req.body.date) : undefined,
+        date: req.body.date || undefined, // Manter como string YYYY-MM-DD
         amount: req.body.amount,
         type: req.body.type,
         categoryId,
@@ -196,7 +199,7 @@ export function registerTransactionRoutes(app: Express) {
         installmentNumber: req.body.installmentNumber,
         installmentsTotal: req.body.installmentsTotal,
         cardId: req.body.cardId,
-        dueDate: req.body.dueDate !== undefined ? (req.body.dueDate ? new Date(req.body.dueDate) : null) : undefined,
+        dueDate: req.body.dueDate !== undefined ? (req.body.dueDate || null) : undefined, // Manter como string YYYY-MM-DD
         isPaid: req.body.isPaid,
         isRecurring: req.body.isRecurring,
         recurringMonths: req.body.recurringMonths,

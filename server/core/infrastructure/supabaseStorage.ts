@@ -44,7 +44,7 @@ export interface Transaction {
 }
 
 export interface InsertTransaction {
-  date: Date;
+  date: Date | string; // Aceita Date ou string YYYY-MM-DD
   amount: number;
   type: "income" | "expense";
   categoryId: string;
@@ -55,7 +55,7 @@ export interface InsertTransaction {
   installmentsTotal?: number | null;
   cardId?: string | null;
   familyMemberId?: string | null;
-  dueDate?: Date | null;
+  dueDate?: Date | string | null; // Aceita Date ou string YYYY-MM-DD
   isPaid?: boolean;
   isRecurring?: boolean;
   recurringMonths?: number | null;
@@ -129,10 +129,34 @@ function dbCategoryToCategory(dbCat: DbCategory): Category {
   };
 }
 
+/**
+ * Converte string YYYY-MM-DD para Date sem problemas de timezone.
+ * Adiciona T12:00:00 (meio-dia) para garantir que o dia está correto
+ * independente do timezone do servidor ou cliente.
+ */
+function parseLocalDate(dateStr: string): Date {
+  return new Date(dateStr + "T12:00:00");
+}
+
+/**
+ * Converte Date ou string para string YYYY-MM-DD para salvar no banco.
+ */
+function toDateString(date: Date | string): string {
+  if (typeof date === "string") {
+    return date; // Já é string, retorna diretamente
+  }
+  // Se for Date, usa toISOString mas com cuidado - isso pode causar shift
+  // Melhor usar getFullYear/getMonth/getDate para evitar timezone issues
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
   return {
     id: dbTx.id,
-    date: new Date(dbTx.date),
+    date: parseLocalDate(dbTx.date), // Usar parseLocalDate para evitar timezone shift
     amount: dbTx.amount,
     type: dbTx.type,
     categoryId: dbTx.category_id,
@@ -143,7 +167,7 @@ function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
     installmentsTotal: dbTx.installments_total,
     cardId: dbTx.card_id,
     familyMemberId: (dbTx as any).family_member_id || null,
-    dueDate: dbTx.due_date ? new Date(dbTx.due_date) : null,
+    dueDate: dbTx.due_date ? parseLocalDate(dbTx.due_date) : null, // Usar parseLocalDate
     isPaid: dbTx.is_paid || false,
     isRecurring: dbTx.is_recurring || false,
     recurringMonths: dbTx.recurring_months || null,
@@ -274,7 +298,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from("transactions")
       .insert({
-        date: transaction.date.toISOString().split("T")[0],
+        date: toDateString(transaction.date), // Usar toDateString para evitar timezone shift
         amount: transaction.amount,
         type: transaction.type,
         category_id: transaction.categoryId,
@@ -285,7 +309,7 @@ export class SupabaseStorage implements IStorage {
         installments_total: transaction.installmentsTotal || null,
         card_id: transaction.cardId || null,
         family_member_id: transaction.familyMemberId || null,
-        due_date: transaction.dueDate ? transaction.dueDate.toISOString().split("T")[0] : null,
+        due_date: transaction.dueDate ? toDateString(transaction.dueDate) : null, // Usar toDateString
         is_paid: transaction.isPaid || false,
         is_recurring: transaction.isRecurring || false,
         recurring_months: transaction.recurringMonths || null,
@@ -300,7 +324,7 @@ export class SupabaseStorage implements IStorage {
 
   async updateTransaction(id: string, updates: Partial<InsertTransaction>): Promise<Transaction | undefined> {
     const updateData: Record<string, unknown> = {};
-    if (updates.date) updateData.date = updates.date.toISOString().split("T")[0];
+    if (updates.date) updateData.date = toDateString(updates.date); // Usar toDateString
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.type) updateData.type = updates.type;
     if (updates.categoryId) updateData.category_id = updates.categoryId;
@@ -311,7 +335,7 @@ export class SupabaseStorage implements IStorage {
     if (updates.installmentsTotal !== undefined) updateData.installments_total = updates.installmentsTotal;
     if (updates.cardId !== undefined) updateData.card_id = updates.cardId;
     if (updates.familyMemberId !== undefined) updateData.family_member_id = updates.familyMemberId;
-    if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate ? updates.dueDate.toISOString().split("T")[0] : null;
+    if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate ? toDateString(updates.dueDate) : null; // Usar toDateString
     if (updates.isPaid !== undefined) updateData.is_paid = updates.isPaid;
     if (updates.isRecurring !== undefined) updateData.is_recurring = updates.isRecurring;
     if (updates.recurringMonths !== undefined) updateData.recurring_months = updates.recurringMonths;
@@ -339,7 +363,7 @@ export class SupabaseStorage implements IStorage {
     // 🔍 LOG: Mapear dados antes de inserir
     const dataToInsert = transactions.map((tx, index) => {
       const mapped = {
-        date: tx.date.toISOString().split("T")[0],
+        date: toDateString(tx.date), // Usar toDateString para evitar timezone shift
         amount: tx.amount,
         type: tx.type,
         category_id: tx.categoryId,
@@ -350,7 +374,7 @@ export class SupabaseStorage implements IStorage {
         installments_total: tx.installmentsTotal || null,
         card_id: tx.cardId || null,
         family_member_id: tx.familyMemberId || null,
-        due_date: tx.dueDate ? tx.dueDate.toISOString().split("T")[0] : null,
+        due_date: tx.dueDate ? toDateString(tx.dueDate) : null, // Usar toDateString
         is_paid: tx.isPaid || false,
         is_recurring: tx.isRecurring || false,
         recurring_months: tx.recurringMonths || null,

@@ -1,5 +1,22 @@
-import { addMonths, setDate } from 'date-fns';
+import { addMonths, setDate, format } from 'date-fns';
 import type { InsertTransaction } from '../core/infrastructure/supabaseStorage';
+
+/**
+ * Converte string YYYY-MM-DD para Date de forma segura (meio-dia local)
+ */
+function parseDate(date: Date | string): Date {
+  if (typeof date === 'string') {
+    return new Date(date + 'T12:00:00');
+  }
+  return date;
+}
+
+/**
+ * Converte Date para string YYYY-MM-DD
+ */
+function formatDate(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
+}
 
 /**
  * Gera transações recorrentes mensais
@@ -17,21 +34,21 @@ export function generateRecurringTransactions(
   }
 
   const transactions: InsertTransaction[] = [];
+  const baseDate = parseDate(baseTransaction.date);
+  const baseDueDate = baseTransaction.dueDate ? parseDate(baseTransaction.dueDate) : null;
 
   // Adiciona a transação base
   transactions.push({ ...baseTransaction });
 
   // Gera as próximas transações recorrentes
   for (let i = 1; i < months; i++) {
-    const nextDate = addMonths(baseTransaction.date, i);
-    const nextDueDate = baseTransaction.dueDate
-      ? addMonths(baseTransaction.dueDate, i)
-      : null;
+    const nextDate = addMonths(baseDate, i);
+    const nextDueDate = baseDueDate ? addMonths(baseDueDate, i) : null;
 
     transactions.push({
       ...baseTransaction,
-      date: nextDate,
-      dueDate: nextDueDate,
+      date: formatDate(nextDate),
+      dueDate: nextDueDate ? formatDate(nextDueDate) : null,
       isPaid: false, // Transações futuras não estão pagas
     });
   }
@@ -59,19 +76,19 @@ export function generateInstallmentTransactions(
   const transactions: InsertTransaction[] = [];
   const totalInstallments = baseTransaction.installmentsTotal;
   const startInstallment = baseTransaction.installmentNumber || 1;
+  const baseDate = parseDate(baseTransaction.date);
+  const baseDueDate = baseTransaction.dueDate ? parseDate(baseTransaction.dueDate) : null;
 
   // Gera todas as parcelas a partir da atual
   for (let i = startInstallment; i <= totalInstallments; i++) {
     const monthsAhead = i - startInstallment;
-    const installmentDate = addMonths(baseTransaction.date, monthsAhead);
-    const installmentDueDate = baseTransaction.dueDate
-      ? addMonths(baseTransaction.dueDate, monthsAhead)
-      : null;
+    const installmentDate = addMonths(baseDate, monthsAhead);
+    const installmentDueDate = baseDueDate ? addMonths(baseDueDate, monthsAhead) : null;
 
     transactions.push({
       ...baseTransaction,
-      date: installmentDate,
-      dueDate: installmentDueDate,
+      date: formatDate(installmentDate),
+      dueDate: installmentDueDate ? formatDate(installmentDueDate) : null,
       installmentNumber: i,
       // Primeira parcela mantém o isPaid do usuário, as demais são não pagas
       isPaid: i === startInstallment ? (baseTransaction.isPaid || false) : false,
