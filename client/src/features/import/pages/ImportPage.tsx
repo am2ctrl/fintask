@@ -112,7 +112,7 @@ export default function Import() {
         amount: t.amount,
         type: t.type,
         categoryId: t.suggestedCategory.id,
-        description: t.description,
+        name: t.description, // Backend espera 'name' como campo obrigatório
         source: statementType,
       }));
 
