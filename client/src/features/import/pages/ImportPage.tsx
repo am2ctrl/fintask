@@ -82,6 +82,15 @@ export default function Import() {
             confidence: t.confidence || 0.8,
             selected: true,
             isRefund,
+            // Preserve backend fields for payment control integration
+            dueDate: t.dueDate,
+            source: t.source,
+            cardId: t.cardId,
+            familyMemberId: t.familyMemberId,
+            isPaid: t.isPaid ?? false,
+            mode: t.mode,
+            installmentNumber: t.installmentNumber,
+            installmentsTotal: t.installmentsTotal,
           };
         }
       );
@@ -113,7 +122,15 @@ export default function Import() {
         type: t.type,
         categoryId: t.suggestedCategory.id,
         name: t.description, // Backend espera 'name' como campo obrigatório
-        source: statementType,
+        // Pass all fields from backend for payment control integration
+        dueDate: t.dueDate,
+        source: t.source,
+        cardId: t.cardId,
+        familyMemberId: t.familyMemberId,
+        isPaid: t.isPaid ?? false,
+        mode: t.mode,
+        installmentNumber: t.installmentNumber,
+        installmentsTotal: t.installmentsTotal,
       }));
 
       await apiRequest("POST", "/api/transactions/batch", {

@@ -63,6 +63,9 @@ export function registerTransactionRoutes(app: Express) {
           cardId,
           familyMemberId,
           dueDate: t.dueDate || null, // Manter como string YYYY-MM-DD
+          // Fields for payment control integration
+          source: t.source || 'manual',
+          isPaid: t.isPaid ?? false,
         };
 
         if (index === 0) {

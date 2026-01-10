@@ -33,6 +33,15 @@ export interface ExtractedTransaction {
   confidence: number;
   selected: boolean;
   isRefund?: boolean;
+  // Fields from backend for payment control integration
+  dueDate?: string;
+  source?: "manual" | "credit_card_import" | "bank_statement_import";
+  cardId?: string;
+  familyMemberId?: string;
+  isPaid?: boolean;
+  mode?: "avulsa" | "parcelada";
+  installmentNumber?: number;
+  installmentsTotal?: number;
 }
 
 interface ExtractedTransactionPreviewProps {
