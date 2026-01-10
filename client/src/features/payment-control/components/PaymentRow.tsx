@@ -4,7 +4,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Check, RotateCcw, Eye, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { formatCurrency } from "@/features/dashboard/components/SummaryCard";
-import { getTransactionStatus, statusConfig, type Transaction } from "@/features/transactions/components/TransactionItem";
+import type { Transaction } from "@/features/transactions/components/TransactionItem";
+import { getTransactionStatusInfo } from "@/shared/lib/transactionStatus";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +23,7 @@ interface PaymentRowProps {
 }
 
 export function PaymentRow({ payment, onClick, onToggleStatus, onEdit, onDelete }: PaymentRowProps) {
-  const status = getTransactionStatus(payment);
-  const statusInfo = statusConfig[status];
+  const statusInfo = getTransactionStatusInfo(payment);
 
   return (
     <div className="grid grid-cols-[100px_100px_1fr_120px_120px_100px_90px] gap-4 p-4 hover:bg-accent/50 transition-colors items-center">
@@ -55,7 +55,7 @@ export function PaymentRow({ payment, onClick, onToggleStatus, onEdit, onDelete 
       </div>
 
       <div className="flex justify-center">
-        <Badge className={`${statusInfo.className} text-xs`}>
+        <Badge className={`${statusInfo.badgeClassName} text-xs`}>
           {statusInfo.label}
         </Badge>
       </div>

@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isBefore, startOfDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Repeat, CreditCard, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -14,7 +14,7 @@ import {
 } from "@/shared/components/ui/tooltip";
 
 export type TransactionMode = "avulsa" | "parcelada";
-export type TransactionStatus = "paid" | "pending" | "overdue";
+export type TransactionStatus = "paid" | "pending" | "overdue" | "due_today";
 
 export interface Transaction {
   id: string;
@@ -64,10 +64,22 @@ export const transactionModeInfo = {
 };
 
 export function getTransactionStatus(transaction: Transaction): TransactionStatus {
+  const today = startOfDay(new Date());
+
   if (transaction.isPaid) return "paid";
-  if (transaction.dueDate && new Date(transaction.dueDate) < new Date()) {
-    return "overdue";
+
+  if (transaction.dueDate) {
+    const dueDateNormalized = startOfDay(transaction.dueDate);
+
+    if (isBefore(dueDateNormalized, today)) {
+      return "overdue";
+    }
+
+    if (isToday(transaction.dueDate)) {
+      return "due_today";
+    }
   }
+
   return "pending";
 }
 
@@ -75,6 +87,7 @@ export const statusConfig: Record<TransactionStatus, { label: string; className:
   paid: { label: "Pago", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
   pending: { label: "Em Aberto", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
   overdue: { label: "Vencido", className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
+  due_today: { label: "Vence Hoje", className: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" },
 };
 
 interface TransactionItemProps {
