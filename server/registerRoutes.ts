@@ -7,6 +7,7 @@ import { registerCardRoutes } from './features/cards';
 import { registerFamilyRoutes } from './features/family';
 import { registerImportRoutes } from './features/import';
 import { registerDashboardRoutes } from './features/dashboard';
+import { registerFamilyAccountRoutes } from './features/family-account';
 
 export async function registerRoutes(
   httpServer: Server,
@@ -20,6 +21,7 @@ export async function registerRoutes(
   registerFamilyRoutes(app);
   registerImportRoutes(app);
   registerDashboardRoutes(app);
+  registerFamilyAccountRoutes(app);
 
   return httpServer;
 }

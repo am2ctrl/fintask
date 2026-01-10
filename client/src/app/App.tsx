@@ -8,6 +8,7 @@ import { AppSidebar } from "@/shared/components/layout/AppSidebar";
 import { ThemeProvider } from "@/shared/components/layout/ThemeProvider";
 import { ThemeToggle } from "@/shared/components/layout/ThemeToggle";
 import { AuthProvider, useAuth } from "@/features/auth";
+import { FamilyProvider } from "@/features/family-account";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import TransactionsPage from "@/features/transactions/pages/TransactionsPage";
@@ -15,6 +16,7 @@ import { PaymentControlPage } from "@/features/payment-control";
 import CategoriesPage from "@/features/categories/pages/CategoriesPage";
 import CardsPage from "@/features/cards/pages/CardsPage";
 import ImportPage from "@/features/import/pages/ImportPage";
+import { FamilySettingsPage } from "@/features/family-account";
 import Login from "@/features/auth/pages/Login";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
@@ -28,6 +30,7 @@ function Router() {
       <Route path="/cartoes" component={CardsPage} />
       <Route path="/importar" component={ImportPage} />
       <Route path="/categorias" component={CategoriesPage} />
+      <Route path="/familia" component={FamilySettingsPage} />
       <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>
@@ -55,22 +58,24 @@ function AuthenticatedApp() {
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar onSignOut={signOut} userEmail={user.email} />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-4 p-4 border-b shrink-0">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-auto p-6">
-            <div className="max-w-7xl mx-auto">
-              <Router />
-            </div>
-          </main>
+    <FamilyProvider>
+      <SidebarProvider style={style as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar onSignOut={signOut} userEmail={user.email} />
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <header className="flex items-center justify-between gap-4 p-4 border-b shrink-0">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <ThemeToggle />
+            </header>
+            <main className="flex-1 overflow-auto p-6">
+              <div className="max-w-7xl mx-auto">
+                <Router />
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </FamilyProvider>
   );
 }
 

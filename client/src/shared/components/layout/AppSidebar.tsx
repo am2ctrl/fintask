@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ArrowLeftRight, Tags, Wallet, Upload, CreditCard, LogOut, User, Receipt } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Tags, Wallet, Upload, CreditCard, LogOut, User, Receipt, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,8 @@ import {
   SidebarMenuItem,
 } from "@/shared/components/ui/sidebar";
 import { Button } from "@/shared/components/ui/button";
+import { Badge } from "@/shared/components/ui/badge";
+import { useFamily } from "@/features/family-account";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -20,6 +22,7 @@ const navItems = [
   { title: "Cartões", url: "/cartoes", icon: CreditCard },
   { title: "Importar", url: "/importar", icon: Upload },
   { title: "Categorias", url: "/categorias", icon: Tags },
+  { title: "Família", url: "/familia", icon: Users },
 ];
 
 interface AppSidebarProps {
@@ -29,6 +32,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onSignOut, userEmail }: AppSidebarProps) {
   const [location] = useLocation();
+  const { pendingDeletionCount, isAdmin } = useFamily();
 
   return (
     <Sidebar>
@@ -54,6 +58,11 @@ export function AppSidebar({ onSignOut, userEmail }: AppSidebarProps) {
                     <Link href={item.url}>
                       <item.icon className="w-4 h-4" />
                       <span>{item.title}</span>
+                      {item.title === "Família" && isAdmin && pendingDeletionCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0.5">
+                          {pendingDeletionCount}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

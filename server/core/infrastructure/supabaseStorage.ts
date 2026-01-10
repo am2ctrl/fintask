@@ -1,4 +1,16 @@
-import { supabase, type DbCategory, type DbTransaction, type DbCreditCard, type TransactionMode } from "./supabase";
+import {
+  supabase,
+  type DbCategory,
+  type DbTransaction,
+  type DbCreditCard,
+  type TransactionMode,
+  type DbFamilyGroup,
+  type DbFamilyGroupMember,
+  type DbDeletionRequest,
+  type FamilyRole,
+  type DeletionRequestStatus,
+  type DeletableResourceType,
+} from "./supabase";
 
 export interface Category {
   id: string;
@@ -90,6 +102,76 @@ export interface InsertCreditCard {
   holderFamilyMemberId?: string | null;
 }
 
+// ============================================
+// Family Account Interfaces
+// ============================================
+
+export interface FamilyGroup {
+  id: string;
+  name: string;
+  adminUserId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FamilyGroupMember {
+  id: string;
+  familyGroupId: string;
+  userId: string;
+  role: FamilyRole;
+  displayName: string;
+  email?: string;
+  createdAt: Date;
+  createdByUserId: string;
+}
+
+export interface DeletionRequest {
+  id: string;
+  familyGroupId: string;
+  resourceType: DeletableResourceType;
+  resourceId: string;
+  resourceName?: string;
+  requestedByUserId: string;
+  requesterName?: string;
+  status: DeletionRequestStatus;
+  reason: string | null;
+  reviewedByUserId: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface InsertFamilyGroup {
+  name?: string;
+}
+
+export interface InsertFamilyGroupMember {
+  familyGroupId: string;
+  userId: string;
+  role: FamilyRole;
+  displayName: string;
+  createdByUserId: string;
+}
+
+export interface InsertDeletionRequest {
+  familyGroupId: string;
+  resourceType: DeletableResourceType;
+  resourceId: string;
+  requestedByUserId: string;
+  reason?: string;
+}
+
+// Extended Transaction with ownership info
+export interface TransactionWithOwnership extends Transaction {
+  createdByUserId: string | null;
+  familyGroupId: string | null;
+}
+
+// Extended CreditCard with ownership info
+export interface CreditCardWithOwnership extends CreditCard {
+  createdByUserId: string | null;
+  familyGroupId: string | null;
+}
+
 export interface IStorage {
   getAllCategories(userId?: string): Promise<Category[]>;
   getCategory(id: string): Promise<Category | undefined>;
@@ -116,6 +198,35 @@ export interface IStorage {
   createFamilyMember(data: InsertFamilyMember, userId: string): Promise<FamilyMember>;
   updateFamilyMember(id: string, updates: Partial<InsertFamilyMember>): Promise<FamilyMember | undefined>;
   deleteFamilyMember(id: string): Promise<void>;
+
+  // Family Account methods
+  getFamilyGroupByUserId(userId: string): Promise<FamilyGroup | null>;
+  getFamilyGroupById(id: string): Promise<FamilyGroup | null>;
+  createFamilyGroup(adminUserId: string, name?: string): Promise<FamilyGroup>;
+  updateFamilyGroup(id: string, updates: Partial<InsertFamilyGroup>): Promise<FamilyGroup | null>;
+
+  getFamilyGroupMembers(familyGroupId: string): Promise<FamilyGroupMember[]>;
+  getFamilyGroupMemberByUserId(userId: string): Promise<FamilyGroupMember | null>;
+  addFamilyGroupMember(data: InsertFamilyGroupMember): Promise<FamilyGroupMember>;
+  removeFamilyGroupMember(id: string): Promise<void>;
+  countFamilyGroupMembers(familyGroupId: string): Promise<number>;
+
+  getDeletionRequests(familyGroupId: string, status?: DeletionRequestStatus): Promise<DeletionRequest[]>;
+  getDeletionRequestById(id: string): Promise<DeletionRequest | null>;
+  createDeletionRequest(data: InsertDeletionRequest): Promise<DeletionRequest>;
+  updateDeletionRequest(id: string, status: DeletionRequestStatus, reviewedByUserId: string): Promise<DeletionRequest | null>;
+
+  // Family-aware data methods
+  getAllTransactionsByFamilyGroup(familyGroupId: string): Promise<TransactionWithOwnership[]>;
+  getAllCreditCardsByFamilyGroup(familyGroupId: string): Promise<CreditCardWithOwnership[]>;
+  getAllCategoriesByFamilyGroup(familyGroupId: string): Promise<Category[]>;
+  getTransactionWithOwnership(id: string): Promise<TransactionWithOwnership | null>;
+  getCreditCardWithOwnership(id: string): Promise<CreditCardWithOwnership | null>;
+
+  // Create with family context
+  createTransactionWithFamily(transaction: InsertTransaction, userId: string, familyGroupId: string): Promise<TransactionWithOwnership>;
+  batchCreateTransactionsWithFamily(transactions: InsertTransaction[], userId: string, familyGroupId: string): Promise<TransactionWithOwnership[]>;
+  createCreditCardWithFamily(card: InsertCreditCard, userId: string, familyGroupId: string): Promise<CreditCardWithOwnership>;
 }
 
 function dbCategoryToCategory(dbCat: DbCategory): Category {
@@ -563,6 +674,493 @@ export class SupabaseStorage implements IStorage {
       isPrimary: db.is_primary,
       createdAt: new Date(db.created_at),
     };
+  }
+
+  // ============================================
+  // Family Account Methods
+  // ============================================
+
+  private dbFamilyGroupToFamilyGroup(db: DbFamilyGroup): FamilyGroup {
+    return {
+      id: db.id,
+      name: db.name,
+      adminUserId: db.admin_user_id,
+      createdAt: new Date(db.created_at),
+      updatedAt: new Date(db.updated_at),
+    };
+  }
+
+  private dbFamilyGroupMemberToFamilyGroupMember(db: DbFamilyGroupMember & { email?: string }): FamilyGroupMember {
+    return {
+      id: db.id,
+      familyGroupId: db.family_group_id,
+      userId: db.user_id,
+      role: db.role,
+      displayName: db.display_name,
+      email: db.email,
+      createdAt: new Date(db.created_at),
+      createdByUserId: db.created_by_user_id,
+    };
+  }
+
+  private dbDeletionRequestToDeletionRequest(db: DbDeletionRequest & { resource_name?: string; requester_name?: string }): DeletionRequest {
+    return {
+      id: db.id,
+      familyGroupId: db.family_group_id,
+      resourceType: db.resource_type,
+      resourceId: db.resource_id,
+      resourceName: db.resource_name,
+      requestedByUserId: db.requested_by_user_id,
+      requesterName: db.requester_name,
+      status: db.status,
+      reason: db.reason,
+      reviewedByUserId: db.reviewed_by_user_id,
+      reviewedAt: db.reviewed_at ? new Date(db.reviewed_at) : null,
+      createdAt: new Date(db.created_at),
+    };
+  }
+
+  async getFamilyGroupByUserId(userId: string): Promise<FamilyGroup | null> {
+    // First check if user is a member of a family group
+    const { data: membership } = await supabase
+      .from("family_group_members")
+      .select("family_group_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (membership) {
+      const { data: group, error } = await supabase
+        .from("family_groups")
+        .select("*")
+        .eq("id", membership.family_group_id)
+        .single();
+
+      if (error || !group) return null;
+      return this.dbFamilyGroupToFamilyGroup(group);
+    }
+
+    // Check if user owns a family group
+    const { data: ownedGroup, error } = await supabase
+      .from("family_groups")
+      .select("*")
+      .eq("admin_user_id", userId)
+      .single();
+
+    if (error || !ownedGroup) return null;
+    return this.dbFamilyGroupToFamilyGroup(ownedGroup);
+  }
+
+  async getFamilyGroupById(id: string): Promise<FamilyGroup | null> {
+    const { data, error } = await supabase
+      .from("family_groups")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return null;
+    return this.dbFamilyGroupToFamilyGroup(data);
+  }
+
+  async createFamilyGroup(adminUserId: string, name: string = "Minha Familia"): Promise<FamilyGroup> {
+    // Create the family group
+    const { data: group, error: groupError } = await supabase
+      .from("family_groups")
+      .insert({
+        admin_user_id: adminUserId,
+        name,
+      })
+      .select()
+      .single();
+
+    if (groupError) throw new Error(groupError.message);
+
+    // Get user info for display name
+    const { data: userData } = await supabase.auth.admin.getUserById(adminUserId);
+    const displayName = userData?.user?.user_metadata?.name || userData?.user?.email || "Admin";
+
+    // Add admin as a member of their own group
+    const { error: memberError } = await supabase
+      .from("family_group_members")
+      .insert({
+        family_group_id: group.id,
+        user_id: adminUserId,
+        role: "admin",
+        display_name: displayName,
+        created_by_user_id: adminUserId,
+      });
+
+    if (memberError) {
+      // Rollback: delete the group
+      await supabase.from("family_groups").delete().eq("id", group.id);
+      throw new Error(memberError.message);
+    }
+
+    // Update existing data to belong to this family group
+    await Promise.all([
+      supabase.from("transactions").update({ family_group_id: group.id, created_by_user_id: adminUserId }).eq("user_id", adminUserId).is("family_group_id", null),
+      supabase.from("credit_cards").update({ family_group_id: group.id, created_by_user_id: adminUserId }).eq("user_id", adminUserId).is("family_group_id", null),
+      supabase.from("categories").update({ family_group_id: group.id }).eq("user_id", adminUserId).is("family_group_id", null),
+      supabase.from("family_members").update({ family_group_id: group.id }).eq("user_id", adminUserId).is("family_group_id", null),
+    ]);
+
+    return this.dbFamilyGroupToFamilyGroup(group);
+  }
+
+  async updateFamilyGroup(id: string, updates: Partial<InsertFamilyGroup>): Promise<FamilyGroup | null> {
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (updates.name) updateData.name = updates.name;
+
+    const { data, error } = await supabase
+      .from("family_groups")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error || !data) return null;
+    return this.dbFamilyGroupToFamilyGroup(data);
+  }
+
+  async getFamilyGroupMembers(familyGroupId: string): Promise<FamilyGroupMember[]> {
+    const { data, error } = await supabase
+      .from("family_group_members")
+      .select("*")
+      .eq("family_group_id", familyGroupId)
+      .order("role", { ascending: true }) // admin first
+      .order("created_at", { ascending: true });
+
+    if (error) throw new Error(error.message);
+
+    // Get emails for all members
+    const memberIds = (data || []).map(m => m.user_id);
+    const membersWithEmails = await Promise.all(
+      (data || []).map(async (member) => {
+        const { data: userData } = await supabase.auth.admin.getUserById(member.user_id);
+        return {
+          ...member,
+          email: userData?.user?.email,
+        };
+      })
+    );
+
+    return membersWithEmails.map(m => this.dbFamilyGroupMemberToFamilyGroupMember(m));
+  }
+
+  async getFamilyGroupMemberByUserId(userId: string): Promise<FamilyGroupMember | null> {
+    const { data, error } = await supabase
+      .from("family_group_members")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) return null;
+    return this.dbFamilyGroupMemberToFamilyGroupMember(data);
+  }
+
+  async addFamilyGroupMember(data: InsertFamilyGroupMember): Promise<FamilyGroupMember> {
+    const { data: member, error } = await supabase
+      .from("family_group_members")
+      .insert({
+        family_group_id: data.familyGroupId,
+        user_id: data.userId,
+        role: data.role,
+        display_name: data.displayName,
+        created_by_user_id: data.createdByUserId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.dbFamilyGroupMemberToFamilyGroupMember(member);
+  }
+
+  async removeFamilyGroupMember(id: string): Promise<void> {
+    const { error } = await supabase
+      .from("family_group_members")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async countFamilyGroupMembers(familyGroupId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from("family_group_members")
+      .select("*", { count: "exact", head: true })
+      .eq("family_group_id", familyGroupId);
+
+    if (error) throw new Error(error.message);
+    return count || 0;
+  }
+
+  async getDeletionRequests(familyGroupId: string, status?: DeletionRequestStatus): Promise<DeletionRequest[]> {
+    let query = supabase
+      .from("deletion_requests")
+      .select("*")
+      .eq("family_group_id", familyGroupId)
+      .order("created_at", { ascending: false });
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+
+    // Enrich with resource names and requester names
+    const enrichedRequests = await Promise.all(
+      (data || []).map(async (req) => {
+        let resourceName: string | undefined;
+        let requesterName: string | undefined;
+
+        // Get resource name
+        if (req.resource_type === "transaction") {
+          const { data: tx } = await supabase.from("transactions").select("name").eq("id", req.resource_id).single();
+          resourceName = tx?.name;
+        } else if (req.resource_type === "credit_card") {
+          const { data: card } = await supabase.from("credit_cards").select("name").eq("id", req.resource_id).single();
+          resourceName = card?.name;
+        }
+
+        // Get requester name
+        const { data: member } = await supabase
+          .from("family_group_members")
+          .select("display_name")
+          .eq("user_id", req.requested_by_user_id)
+          .single();
+        requesterName = member?.display_name;
+
+        return {
+          ...req,
+          resource_name: resourceName,
+          requester_name: requesterName,
+        };
+      })
+    );
+
+    return enrichedRequests.map(r => this.dbDeletionRequestToDeletionRequest(r));
+  }
+
+  async getDeletionRequestById(id: string): Promise<DeletionRequest | null> {
+    const { data, error } = await supabase
+      .from("deletion_requests")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return null;
+    return this.dbDeletionRequestToDeletionRequest(data);
+  }
+
+  async createDeletionRequest(data: InsertDeletionRequest): Promise<DeletionRequest> {
+    const { data: request, error } = await supabase
+      .from("deletion_requests")
+      .insert({
+        family_group_id: data.familyGroupId,
+        resource_type: data.resourceType,
+        resource_id: data.resourceId,
+        requested_by_user_id: data.requestedByUserId,
+        reason: data.reason || null,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.dbDeletionRequestToDeletionRequest(request);
+  }
+
+  async updateDeletionRequest(id: string, status: DeletionRequestStatus, reviewedByUserId: string): Promise<DeletionRequest | null> {
+    const { data, error } = await supabase
+      .from("deletion_requests")
+      .update({
+        status,
+        reviewed_by_user_id: reviewedByUserId,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error || !data) return null;
+
+    // If approved, delete the resource
+    if (status === "approved") {
+      if (data.resource_type === "transaction") {
+        await supabase.from("transactions").delete().eq("id", data.resource_id);
+      } else if (data.resource_type === "credit_card") {
+        await supabase.from("credit_cards").delete().eq("id", data.resource_id);
+      }
+    }
+
+    return this.dbDeletionRequestToDeletionRequest(data);
+  }
+
+  // ============================================
+  // Family-Aware Data Methods
+  // ============================================
+
+  private dbTransactionToTransactionWithOwnership(dbTx: any): TransactionWithOwnership {
+    return {
+      ...dbTransactionToTransaction(dbTx),
+      createdByUserId: dbTx.created_by_user_id || null,
+      familyGroupId: dbTx.family_group_id || null,
+    };
+  }
+
+  private dbCreditCardToCreditCardWithOwnership(dbCard: any): CreditCardWithOwnership {
+    return {
+      ...dbCreditCardToCreditCard(dbCard),
+      createdByUserId: dbCard.created_by_user_id || null,
+      familyGroupId: dbCard.family_group_id || null,
+    };
+  }
+
+  async getAllTransactionsByFamilyGroup(familyGroupId: string): Promise<TransactionWithOwnership[]> {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("family_group_id", familyGroupId)
+      .order("date", { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return (data || []).map(tx => this.dbTransactionToTransactionWithOwnership(tx));
+  }
+
+  async getAllCreditCardsByFamilyGroup(familyGroupId: string): Promise<CreditCardWithOwnership[]> {
+    const { data, error } = await supabase
+      .from("credit_cards")
+      .select("*")
+      .eq("family_group_id", familyGroupId)
+      .order("name");
+
+    if (error) throw new Error(error.message);
+    return (data || []).map(card => this.dbCreditCardToCreditCardWithOwnership(card));
+  }
+
+  async getAllCategoriesByFamilyGroup(familyGroupId: string): Promise<Category[]> {
+    // Get default categories (no user_id) and family-specific categories
+    const [defaultCats, familyCats] = await Promise.all([
+      supabase.from("categories").select("*").is("user_id", null),
+      supabase.from("categories").select("*").eq("family_group_id", familyGroupId)
+    ]);
+
+    if (defaultCats.error) throw new Error(defaultCats.error.message);
+    if (familyCats.error) throw new Error(familyCats.error.message);
+
+    const allData = [...(defaultCats.data || []), ...(familyCats.data || [])];
+    return allData
+      .map(dbCategoryToCategory)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getTransactionWithOwnership(id: string): Promise<TransactionWithOwnership | null> {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return null;
+    return this.dbTransactionToTransactionWithOwnership(data);
+  }
+
+  async getCreditCardWithOwnership(id: string): Promise<CreditCardWithOwnership | null> {
+    const { data, error } = await supabase
+      .from("credit_cards")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return null;
+    return this.dbCreditCardToCreditCardWithOwnership(data);
+  }
+
+  async createTransactionWithFamily(transaction: InsertTransaction, userId: string, familyGroupId: string): Promise<TransactionWithOwnership> {
+    const { data, error } = await supabase
+      .from("transactions")
+      .insert({
+        date: toDateString(transaction.date),
+        amount: transaction.amount,
+        type: transaction.type,
+        category_id: transaction.categoryId,
+        name: transaction.name,
+        description: transaction.description || null,
+        mode: transaction.mode || "avulsa",
+        installment_number: transaction.installmentNumber || null,
+        installments_total: transaction.installmentsTotal || null,
+        card_id: transaction.cardId || null,
+        family_member_id: transaction.familyMemberId || null,
+        due_date: transaction.dueDate ? toDateString(transaction.dueDate) : null,
+        is_paid: transaction.isPaid || false,
+        is_recurring: transaction.isRecurring || false,
+        recurring_months: transaction.recurringMonths || null,
+        user_id: userId,
+        created_by_user_id: userId,
+        family_group_id: familyGroupId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.dbTransactionToTransactionWithOwnership(data);
+  }
+
+  async batchCreateTransactionsWithFamily(transactions: InsertTransaction[], userId: string, familyGroupId: string): Promise<TransactionWithOwnership[]> {
+    const dataToInsert = transactions.map(tx => ({
+      date: toDateString(tx.date),
+      amount: tx.amount,
+      type: tx.type,
+      category_id: tx.categoryId,
+      name: tx.name,
+      description: tx.description || null,
+      mode: tx.mode || "avulsa",
+      installment_number: tx.installmentNumber || null,
+      installments_total: tx.installmentsTotal || null,
+      card_id: tx.cardId || null,
+      family_member_id: tx.familyMemberId || null,
+      due_date: tx.dueDate ? toDateString(tx.dueDate) : null,
+      is_paid: tx.isPaid || false,
+      is_recurring: tx.isRecurring || false,
+      recurring_months: tx.recurringMonths || null,
+      user_id: userId,
+      created_by_user_id: userId,
+      family_group_id: familyGroupId,
+    }));
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .insert(dataToInsert)
+      .select();
+
+    if (error) throw new Error(error.message);
+    return (data || []).map(tx => this.dbTransactionToTransactionWithOwnership(tx));
+  }
+
+  async createCreditCardWithFamily(card: InsertCreditCard, userId: string, familyGroupId: string): Promise<CreditCardWithOwnership> {
+    const { data, error } = await supabase
+      .from("credit_cards")
+      .insert({
+        name: card.name,
+        last_four_digits: card.lastFourDigits,
+        card_type: card.cardType,
+        holder: card.holder,
+        purpose: card.purpose,
+        color: card.color,
+        icon: card.icon,
+        card_limit: card.limit || null,
+        closing_day: card.closingDay || null,
+        due_day: card.dueDay || null,
+        holder_family_member_id: card.holderFamilyMemberId || null,
+        user_id: userId,
+        created_by_user_id: userId,
+        family_group_id: familyGroupId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.dbCreditCardToCreditCardWithOwnership(data);
   }
 }
 

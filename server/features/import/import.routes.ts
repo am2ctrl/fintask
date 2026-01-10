@@ -96,7 +96,7 @@ export function registerImportRoutes(app: Express) {
       logger.debug("\n🤖 PASSO 4: Categorizando com IA (lotes paralelos)...");
       const categorized = await categorizeBatch(
         transactionsWithTypes,
-        categories.map(c => ({ id: c.id, name: c.name, type: c.type, parentId: c.parent_id }))
+        categories.map(c => ({ id: c.id, name: c.name, type: c.type, parentId: c.parentId }))
       );
       logger.debug(`   ✓ ${categorized.length} transações categorizadas`);
 
@@ -215,9 +215,15 @@ export function registerImportRoutes(app: Express) {
       let modelUsed: string;
       let finishReason: string;
 
+      const gemini = getGemini();
+      const openaiClient = getOpenAI();
+
       try {
+        if (!gemini) {
+          throw new Error("Gemini not configured");
+        }
         logger.debug("\n🚀 Tentando Gemini 2.5 Flash (primário)...");
-        const model = genAI.getGenerativeModel({
+        const model = gemini.getGenerativeModel({
           model: "gemini-2.5-flash",
           generationConfig: {
             responseMimeType: "application/json",
@@ -236,7 +242,11 @@ export function registerImportRoutes(app: Express) {
         logger.warn("⚠️ Gemini falhou, usando GPT-4o Mini (backup)...");
         logger.warn("Erro do Gemini:", geminiError instanceof Error ? geminiError.message : String(geminiError));
 
-        const response = await openai.chat.completions.create({
+        if (!openaiClient) {
+          throw new Error("Neither Gemini nor OpenAI is configured");
+        }
+
+        const response = await openaiClient.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },

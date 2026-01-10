@@ -25,6 +25,8 @@ interface ApiCreditCard {
   closingDay: number | null;
   dueDay: number | null;
   holderFamilyMemberId: string | null;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 interface ApiTransaction {
@@ -48,7 +50,7 @@ export default function Cards() {
     queryKey: ["/api/transactions"],
   });
 
-  const cards: CreditCardData[] = useMemo(() => {
+  const cards: (CreditCardData & { canEdit?: boolean; canDelete?: boolean })[] = useMemo(() => {
     return apiCards.map((c) => {
       const purposeObj = cardPurposes.find((p) => p.id === c.purpose || p.label === c.purpose);
       return {
@@ -64,6 +66,8 @@ export default function Cards() {
         closingDay: c.closingDay || undefined,
         dueDay: c.dueDay || undefined,
         holderFamilyMemberId: c.holderFamilyMemberId || undefined,
+        canEdit: c.canEdit,
+        canDelete: c.canDelete,
       };
     });
   }, [apiCards]);

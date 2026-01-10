@@ -318,9 +318,6 @@ export default function Dashboard() {
           transactions={monthTransactions}
           maxItems={5}
           showHeader={false}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onAddNew={() => setModalOpen(true)}
         />
       </div>
 

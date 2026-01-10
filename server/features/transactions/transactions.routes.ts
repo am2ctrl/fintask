@@ -1,5 +1,11 @@
 import type { Express, Response } from "express";
-import { authMiddleware, type AuthenticatedRequest } from '../auth';
+import {
+  authMiddleware,
+  familyAuthMiddleware,
+  requireFamilyGroup,
+  checkPermission,
+  type FamilyAuthenticatedRequest,
+} from '../auth';
 import { storage } from '../../core/infrastructure/supabaseStorage';
 import { validateUUID } from '../../../shared/utils/validation';
 import { logger } from '../../core/logger';
@@ -7,9 +13,10 @@ import { mapCategoryId, getCategoryName } from '../../utils/categoryMapping';
 import { processTransaction } from '../../utils/transactionGenerators';
 
 export function registerTransactionRoutes(app: Express) {
-  app.post("/api/transactions/batch", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  app.post("/api/transactions/batch", authMiddleware, familyAuthMiddleware, requireFamilyGroup, async (req: FamilyAuthenticatedRequest, res: Response) => {
     const { transactions } = req.body;
     const userId = req.userId!;
+    const familyGroupId = req.familyGroupId!;
 
     try {
       if (!Array.isArray(transactions)) {
@@ -65,9 +72,10 @@ export function registerTransactionRoutes(app: Express) {
         return cleanTransaction;
       });
 
-      const savedTransactions = await storage.batchCreateTransactions(
+      const savedTransactions = await storage.batchCreateTransactionsWithFamily(
         cleanedTransactions,
-        userId
+        userId,
+        familyGroupId
       );
 
       logger.debug("✅ Sucesso! Salvou", savedTransactions.length, "transações\n");
@@ -96,13 +104,16 @@ export function registerTransactionRoutes(app: Express) {
     }
   });
 
-  app.get("/api/transactions", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  app.get("/api/transactions", authMiddleware, familyAuthMiddleware, requireFamilyGroup, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
       const userId = req.userId!;
-      const transactions = await storage.getAllTransactions(userId);
+      const familyGroupId = req.familyGroupId!;
+
+      // Get transactions for the entire family group
+      const transactions = await storage.getAllTransactionsByFamilyGroup(familyGroupId);
 
       // Buscar todos os cartões e membros para enriquecer as transações
-      const allCards = await storage.getAllCreditCards(userId);
+      const allCards = await storage.getAllCreditCardsByFamilyGroup(familyGroupId);
       const allMembers = await storage.getAllFamilyMembers(userId);
 
       // ⚡ OTIMIZAÇÃO: Criar Maps para lookup O(1) ao invés de array.find() O(n)
@@ -113,6 +124,10 @@ export function registerTransactionRoutes(app: Express) {
       const enrichedTransactions = transactions.map(t => {
         const card = t.cardId ? cardsMap.get(t.cardId) : null;
         const member = t.familyMemberId ? membersMap.get(t.familyMemberId) : null;
+
+        // Permission check for edit/delete
+        const canEdit = checkPermission(req, 'transaction', 'update', t.createdByUserId).allowed;
+        const canDelete = checkPermission(req, 'transaction', 'delete', t.createdByUserId).allowed;
 
         return {
           ...t,
@@ -126,6 +141,8 @@ export function registerTransactionRoutes(app: Express) {
             id: member.id,
             name: member.name,
           } : null,
+          canEdit,
+          canDelete,
         };
       });
 
@@ -136,9 +153,10 @@ export function registerTransactionRoutes(app: Express) {
     }
   });
 
-  app.post("/api/transactions", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  app.post("/api/transactions", authMiddleware, familyAuthMiddleware, requireFamilyGroup, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
       const userId = req.userId!;
+      const familyGroupId = req.familyGroupId!;
 
       // Mapear categoryId numérico para UUID
       const categoryId = mapCategoryId(req.body.categoryId);
@@ -167,11 +185,11 @@ export function registerTransactionRoutes(app: Express) {
 
       // Se for apenas uma transação, usar createTransaction
       if (transactionsToCreate.length === 1) {
-        const transaction = await storage.createTransaction(transactionsToCreate[0], userId);
+        const transaction = await storage.createTransactionWithFamily(transactionsToCreate[0], userId, familyGroupId);
         res.json(transaction);
       } else {
         // Se forem múltiplas (recorrentes ou parceladas), usar batchCreate
-        const createdTransactions = await storage.batchCreateTransactions(transactionsToCreate, userId);
+        const createdTransactions = await storage.batchCreateTransactionsWithFamily(transactionsToCreate, userId, familyGroupId);
         logger.info(`Created ${createdTransactions.length} transactions (recurring or installments)`);
         // Retorna a primeira transação criada para manter compatibilidade
         res.json(createdTransactions[0]);
@@ -182,8 +200,28 @@ export function registerTransactionRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/transactions/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  app.patch("/api/transactions/:id", authMiddleware, familyAuthMiddleware, requireFamilyGroup, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
+      const userId = req.userId!;
+      const familyGroupId = req.familyGroupId!;
+
+      // Get the transaction to check ownership
+      const existingTransaction = await storage.getTransactionWithOwnership(req.params.id);
+      if (!existingTransaction) {
+        return res.status(404).json({ error: "Transacao nao encontrada" });
+      }
+
+      // Check if transaction belongs to this family group
+      if (existingTransaction.familyGroupId !== familyGroupId) {
+        return res.status(404).json({ error: "Transacao nao encontrada" });
+      }
+
+      // Check permission to edit
+      const permission = checkPermission(req, 'transaction', 'update', existingTransaction.createdByUserId);
+      if (!permission.allowed) {
+        return res.status(403).json({ error: permission.message });
+      }
+
       // Mapear categoryId se presente
       const categoryId = req.body.categoryId ? mapCategoryId(req.body.categoryId) : undefined;
 
@@ -211,10 +249,47 @@ export function registerTransactionRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/transactions/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  app.delete("/api/transactions/:id", authMiddleware, familyAuthMiddleware, requireFamilyGroup, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
-      await storage.deleteTransaction(req.params.id);
-      res.json({ success: true });
+      const userId = req.userId!;
+      const familyGroupId = req.familyGroupId!;
+
+      // Get the transaction to check ownership
+      const existingTransaction = await storage.getTransactionWithOwnership(req.params.id);
+      if (!existingTransaction) {
+        return res.status(404).json({ error: "Transacao nao encontrada" });
+      }
+
+      // Check if transaction belongs to this family group
+      if (existingTransaction.familyGroupId !== familyGroupId) {
+        return res.status(404).json({ error: "Transacao nao encontrada" });
+      }
+
+      // Check permission to delete
+      const permission = checkPermission(req, 'transaction', 'delete', existingTransaction.createdByUserId);
+
+      if (permission.allowed) {
+        // Admin can delete directly
+        await storage.deleteTransaction(req.params.id);
+        res.json({ success: true });
+      } else if (permission.requiresApproval) {
+        // Member needs to create a deletion request
+        const deletionRequest = await storage.createDeletionRequest({
+          familyGroupId,
+          resourceType: 'transaction',
+          resourceId: req.params.id,
+          requestedByUserId: userId,
+          reason: req.body.reason,
+        });
+        res.json({
+          success: false,
+          requiresApproval: true,
+          deletionRequest,
+          message: "Solicitacao de exclusao enviada para aprovacao do administrador"
+        });
+      } else {
+        return res.status(403).json({ error: permission.message });
+      }
     } catch (error) {
       logger.error("Error deleting transaction:", error);
       res.status(500).json({ error: "Failed to delete transaction" });

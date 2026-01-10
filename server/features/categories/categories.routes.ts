@@ -1,22 +1,41 @@
 import type { Express, Response } from "express";
-import { authMiddleware, type AuthenticatedRequest } from '../auth';
+import {
+  authMiddleware,
+  familyAuthMiddleware,
+  requireFamilyGroup,
+  requireAdmin,
+  checkPermission,
+  type FamilyAuthenticatedRequest,
+} from '../auth';
 import { storage } from '../../core/infrastructure/supabaseStorage';
 import { validateUUID } from '../../../shared/utils/validation';
 import { logger } from '../../core/logger';
 
 export function registerCategoryRoutes(app: Express) {
-  app.get("/api/categories", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  app.get("/api/categories", authMiddleware, familyAuthMiddleware, requireFamilyGroup, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.userId!;
-      const categories = await storage.getAllCategories(userId);
-      res.json(categories);
+      const familyGroupId = req.familyGroupId!;
+
+      // Get categories for the family group (includes default categories)
+      const categories = await storage.getAllCategoriesByFamilyGroup(familyGroupId);
+
+      // Add permission info (only admin can manage categories)
+      const isAdmin = req.isAdmin === true;
+      const categoriesWithPermissions = categories.map(cat => ({
+        ...cat,
+        canEdit: isAdmin,
+        canDelete: isAdmin,
+      }));
+
+      res.json(categoriesWithPermissions);
     } catch (error) {
       logger.error("Error fetching categories:", error);
       res.status(500).json({ error: "Failed to fetch categories" });
     }
   });
 
-  app.post("/api/categories", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  // Only admin can create categories
+  app.post("/api/categories", authMiddleware, familyAuthMiddleware, requireFamilyGroup, requireAdmin, async (req: FamilyAuthenticatedRequest, res: Response) => {
     const userId = req.userId!;
 
     try {
@@ -55,7 +74,8 @@ export function registerCategoryRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/categories/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  // Only admin can update categories
+  app.patch("/api/categories/:id", authMiddleware, familyAuthMiddleware, requireFamilyGroup, requireAdmin, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
       const category = await storage.updateCategory(req.params.id, {
         name: req.body.name,
@@ -70,7 +90,8 @@ export function registerCategoryRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/categories/:id", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  // Only admin can delete categories
+  app.delete("/api/categories/:id", authMiddleware, familyAuthMiddleware, requireFamilyGroup, requireAdmin, async (req: FamilyAuthenticatedRequest, res: Response) => {
     try {
       await storage.deleteCategory(req.params.id);
       res.json({ success: true });

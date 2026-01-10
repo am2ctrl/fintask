@@ -82,3 +82,55 @@ export interface DbUser {
   avatar_url: string | null;
   created_at: string;
 }
+
+// ============================================
+// Family Account Types
+// ============================================
+
+export type FamilyRole = 'admin' | 'member';
+
+export interface DbFamilyGroup {
+  id: string;
+  name: string;
+  admin_user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbFamilyGroupMember {
+  id: string;
+  family_group_id: string;
+  user_id: string;
+  role: FamilyRole;
+  display_name: string;
+  created_at: string;
+  created_by_user_id: string;
+}
+
+export type DeletionRequestStatus = 'pending' | 'approved' | 'rejected';
+export type DeletableResourceType = 'transaction' | 'credit_card';
+
+export interface DbDeletionRequest {
+  id: string;
+  family_group_id: string;
+  resource_type: DeletableResourceType;
+  resource_id: string;
+  requested_by_user_id: string;
+  status: DeletionRequestStatus;
+  reason: string | null;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+// Extended Transaction with family fields
+export interface DbTransactionWithFamily extends DbTransaction {
+  created_by_user_id: string | null;
+  family_group_id: string | null;
+}
+
+// Extended CreditCard with family fields
+export interface DbCreditCardWithFamily extends DbCreditCard {
+  created_by_user_id: string | null;
+  family_group_id: string | null;
+}
