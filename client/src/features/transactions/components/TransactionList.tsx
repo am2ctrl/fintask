@@ -3,6 +3,7 @@ import { Card } from "@/shared/components/ui/card";
 import { TransactionItem, type Transaction } from "./TransactionItem";
 import { FileX } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import type { DualRunningBalances } from "@/shared/hooks/useTransactionCalculations";
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -12,19 +13,8 @@ interface TransactionListProps {
   onAddNew?: () => void;
   showHeader?: boolean;
   showRunningBalance?: boolean;
+  runningBalances?: DualRunningBalances;
   maxItems?: number;
-}
-
-function calculateRunningBalances(transactions: Transaction[]): Map<string, number> {
-  const sorted = [...transactions].sort((a, b) => a.date.getTime() - b.date.getTime());
-  let balance = 0;
-  const balances = new Map<string, number>();
-
-  for (const t of sorted) {
-    balance += t.type === "income" ? t.amount : -t.amount;
-    balances.set(t.id, balance);
-  }
-  return balances;
 }
 
 export function TransactionList({
@@ -35,16 +25,12 @@ export function TransactionList({
   onAddNew,
   showHeader = true,
   showRunningBalance = true,
+  runningBalances,
   maxItems,
 }: TransactionListProps) {
   const displayTransactions = maxItems
     ? transactions.slice(0, maxItems)
     : transactions;
-
-  const runningBalances = useMemo(() => {
-    if (!showRunningBalance) return new Map<string, number>();
-    return calculateRunningBalances(displayTransactions);
-  }, [displayTransactions, showRunningBalance]);
 
   const sortedForDisplay = useMemo(() => {
     return [...displayTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -54,13 +40,13 @@ export function TransactionList({
     return (
       <Card className="p-12 flex flex-col items-center justify-center min-h-96 text-center">
         <FileX className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Nenhuma transação encontrada</h3>
+        <h3 className="text-lg font-semibold mb-2">Nenhuma transacao encontrada</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Comece adicionando sua primeira transação
+          Comece adicionando sua primeira transacao
         </p>
         {onAddNew && (
           <Button onClick={onAddNew} data-testid="button-add-first-transaction">
-            Adicionar Transação
+            Adicionar Transacao
           </Button>
         )}
       </Card>
@@ -70,13 +56,22 @@ export function TransactionList({
   return (
     <Card className="overflow-hidden" data-testid="list-transactions">
       {showHeader && (
-        <div className="hidden md:grid grid-cols-[100px_1fr_100px_120px_120px_90px] gap-4 p-4 border-b bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className={`hidden md:grid gap-4 p-4 border-b bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground ${
+          showRunningBalance
+            ? "grid-cols-[100px_1fr_100px_120px_120px_120px_90px]"
+            : "grid-cols-[100px_1fr_100px_120px_90px]"
+        }`}>
           <div>Data</div>
-          <div>Descrição</div>
-          <div className="text-center">Situação</div>
+          <div>Descricao</div>
+          <div className="text-center">Situacao</div>
           <div className="text-right">Valor (R$)</div>
-          {showRunningBalance && <div className="text-right">Saldo (R$)</div>}
-          <div className="text-center">Ações</div>
+          {showRunningBalance && (
+            <>
+              <div className="text-right">Saldo Real</div>
+              <div className="text-right">Saldo Previsto</div>
+            </>
+          )}
+          <div className="text-center">Acoes</div>
         </div>
       )}
       <div className="divide-y">
@@ -84,7 +79,9 @@ export function TransactionList({
           <TransactionItem
             key={transaction.id}
             transaction={transaction}
-            runningBalance={showRunningBalance ? runningBalances.get(transaction.id) : undefined}
+            runningBalanceReal={showRunningBalance ? runningBalances?.saldoReal.get(transaction.id) : undefined}
+            runningBalancePrevisto={showRunningBalance ? runningBalances?.saldoPrevisto.get(transaction.id) : undefined}
+            showDualBalance={showRunningBalance}
             onEdit={onEdit}
             onDelete={onDelete}
             onToggleStatus={onToggleStatus}

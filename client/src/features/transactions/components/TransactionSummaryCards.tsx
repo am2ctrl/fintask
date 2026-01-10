@@ -6,48 +6,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import type { Transaction } from "./TransactionItem";
+import type { TransactionSummary } from "@/shared/hooks/useTransactionCalculations";
 
 interface TransactionSummaryCardsProps {
-  transactions: Transaction[];
-}
-
-interface SummaryData {
-  incomeOpen: number;
-  incomeRealized: number;
-  expenseOpen: number;
-  expenseRealized: number;
-  total: number;
-}
-
-function calculateSummary(transactions: Transaction[]): SummaryData {
-  const summary: SummaryData = {
-    incomeOpen: 0,
-    incomeRealized: 0,
-    expenseOpen: 0,
-    expenseRealized: 0,
-    total: 0,
-  };
-
-  for (const t of transactions) {
-    if (t.type === "income") {
-      if (t.isPaid) {
-        summary.incomeRealized += t.amount;
-      } else {
-        summary.incomeOpen += t.amount;
-      }
-      summary.total += t.amount;
-    } else {
-      if (t.isPaid) {
-        summary.expenseRealized += t.amount;
-      } else {
-        summary.expenseOpen += t.amount;
-      }
-      summary.total -= t.amount;
-    }
-  }
-
-  return summary;
+  summary: TransactionSummary;
 }
 
 interface SummaryCardItemProps {
@@ -80,40 +42,32 @@ function SummaryCardItem({ label, value, colorClass, tooltip }: SummaryCardItemP
   );
 }
 
-export function TransactionSummaryCards({ transactions }: TransactionSummaryCardsProps) {
-  const summary = calculateSummary(transactions);
-
+export function TransactionSummaryCards({ summary }: TransactionSummaryCardsProps) {
   return (
     <div className="flex flex-wrap gap-3">
       <SummaryCardItem
-        label="Receitas em aberto (R$)"
-        value={summary.incomeOpen}
-        colorClass="text-primary"
-        tooltip="Receitas previstas que ainda não foram recebidas"
+        label="Saldo Real"
+        value={summary.saldoReal}
+        colorClass={summary.saldoReal >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}
+        tooltip="Receitas recebidas menos despesas pagas"
       />
       <SummaryCardItem
-        label="Receitas realizadas (R$)"
-        value={summary.incomeRealized}
-        colorClass="text-primary"
-        tooltip="Receitas que já foram recebidas"
+        label="A Receber"
+        value={summary.aReceber}
+        colorClass="text-blue-600 dark:text-blue-400"
+        tooltip="Total de receitas ainda pendentes"
       />
       <SummaryCardItem
-        label="Despesas em aberto (R$)"
-        value={summary.expenseOpen}
-        colorClass="text-destructive"
-        tooltip="Despesas previstas que ainda não foram pagas"
+        label="A Pagar"
+        value={summary.aPagar}
+        colorClass="text-orange-600 dark:text-orange-400"
+        tooltip="Total de despesas ainda pendentes"
       />
       <SummaryCardItem
-        label="Despesas realizadas (R$)"
-        value={summary.expenseRealized}
-        colorClass="text-destructive"
-        tooltip="Despesas que já foram pagas"
-      />
-      <SummaryCardItem
-        label="Total do período (R$)"
-        value={summary.total}
-        colorClass={summary.total >= 0 ? "text-chart-2" : "text-destructive"}
-        tooltip="Resultado líquido do período (receitas - despesas)"
+        label="Saldo Previsto"
+        value={summary.saldoPrevisto}
+        colorClass={summary.saldoPrevisto >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}
+        tooltip="Saldo Real + A Receber - A Pagar"
       />
     </div>
   );

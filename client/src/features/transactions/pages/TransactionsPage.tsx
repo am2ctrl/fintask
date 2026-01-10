@@ -15,6 +15,7 @@ import { CircleDot } from "lucide-react";
 import { apiRequest, queryClient } from "@/shared/lib/queryClient";
 import { getIconByName } from "@/shared/lib/iconMap";
 import { useToast } from "@/shared/hooks/use-toast";
+import { useTransactionCalculations } from "@/shared/hooks/useTransactionCalculations";
 
 interface ApiTransaction {
   id: string;
@@ -60,7 +61,6 @@ export default function Transactions() {
   });
   const { toast } = useToast();
 
-  // Atualizar filtros quando o mês mudar
   const handleMonthChange = (date: Date) => {
     setCurrentMonth(date);
     const { dateFrom, dateTo } = getMonthDateRange(date);
@@ -72,7 +72,6 @@ export default function Transactions() {
     }));
   };
 
-  // Ler parâmetros da URL e aplicar filtro
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const memberParam = params.get("member");
@@ -166,6 +165,8 @@ export default function Transactions() {
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [transactions, filters]);
 
+  const { summary, runningBalances } = useTransactionCalculations(filteredTransactions);
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/transactions", data);
@@ -173,10 +174,10 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transação criada com sucesso" });
+      toast({ title: "Sucesso", description: "Transacao criada com sucesso" });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Falha ao criar transação", variant: "destructive" });
+      toast({ title: "Erro", description: "Falha ao criar transacao", variant: "destructive" });
     },
   });
 
@@ -187,7 +188,7 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transação atualizada" });
+      toast({ title: "Sucesso", description: "Transacao atualizada" });
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao atualizar", variant: "destructive" });
@@ -200,7 +201,7 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transação removida" });
+      toast({ title: "Sucesso", description: "Transacao removida" });
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao remover", variant: "destructive" });
@@ -246,9 +247,9 @@ export default function Transactions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Transações</h1>
+          <h1 className="text-2xl font-semibold">Transacoes</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie todas as suas transações
+            Gerencie todas as suas transacoes
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -263,13 +264,13 @@ export default function Transactions() {
         </div>
       </div>
 
-      <TransactionSummaryCards transactions={filteredTransactions} />
+      <TransactionSummaryCards summary={summary} />
 
       <TransactionFilters filters={filters} onFiltersChange={setFilters} />
 
       <div className="flex items-center justify-between gap-4 text-sm">
         <span className="text-muted-foreground">
-          {filteredTransactions.length} transações encontradas
+          {filteredTransactions.length} transacoes encontradas
         </span>
       </div>
 
@@ -277,6 +278,7 @@ export default function Transactions() {
         transactions={filteredTransactions}
         showHeader={true}
         showRunningBalance={true}
+        runningBalances={runningBalances}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onToggleStatus={handleToggleStatus}

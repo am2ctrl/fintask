@@ -5,6 +5,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CategoryBadge, type Category } from "@/features/categories/components/CategoryBadge";
 import { formatCurrency } from "@/features/dashboard/components/SummaryCard";
+import { getTransactionStatusInfo } from "@/shared/lib/transactionStatus";
+import { cn } from "@/shared/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -51,18 +53,18 @@ export interface Transaction {
 export const transactionModeInfo = {
   avulsa: {
     label: "Avulsa",
-    description: "Transação única, sem repetição. Ex: compra pontual, presente, reembolso.",
+    description: "Transacao unica, sem repeticao. Ex: compra pontual, presente, reembolso.",
     icon: null,
   },
   recorrente: {
     label: "Recorrente",
-    description: "Despesa que se repete todo mês com valor igual ou similar. Ex: aluguel, Netflix, plano de celular, academia.",
+    description: "Despesa que se repete todo mes com valor igual ou similar. Ex: aluguel, Netflix, plano de celular, academia.",
     icon: Repeat,
-    examples: ["Aluguel", "Netflix", "Spotify", "Internet", "Academia", "Plano de saúde"],
+    examples: ["Aluguel", "Netflix", "Spotify", "Internet", "Academia", "Plano de saude"],
   },
   parcelada: {
     label: "Parcelada",
-    description: "Compra dividida em parcelas fixas. Ex: TV em 10x, celular em 12x, móveis em 6x.",
+    description: "Compra dividida em parcelas fixas. Ex: TV em 10x, celular em 12x, moveis em 6x.",
     icon: CreditCard,
     examples: ["TV 10x", "Celular 12x", "Geladeira 6x", "Viagem 8x"],
   },
@@ -84,7 +86,9 @@ export const statusConfig: Record<TransactionStatus, { label: string; className:
 
 interface TransactionItemProps {
   transaction: Transaction;
-  runningBalance?: number;
+  runningBalanceReal?: number;
+  runningBalancePrevisto?: number;
+  showDualBalance?: boolean;
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
   onToggleStatus?: (transaction: Transaction) => void;
@@ -92,18 +96,22 @@ interface TransactionItemProps {
 
 export function TransactionItem({
   transaction,
-  runningBalance,
+  runningBalanceReal,
+  runningBalancePrevisto,
+  showDualBalance = true,
   onEdit,
   onDelete,
   onToggleStatus
 }: TransactionItemProps) {
   const mode = transaction.mode || "avulsa";
-  const status = getTransactionStatus(transaction);
-  const statusInfo = statusConfig[status];
+  const statusInfo = getTransactionStatusInfo(transaction);
 
   return (
     <div
-      className="group flex items-center justify-between gap-4 p-4 hover:bg-accent/50 transition-colors"
+      className={cn(
+        "group flex items-center justify-between gap-4 p-4 hover:bg-accent/50 transition-colors",
+        statusInfo.rowClassName
+      )}
       data-testid={`row-transaction-${transaction.id}`}
     >
       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -142,7 +150,7 @@ export function TransactionItem({
       </div>
 
       <div className="flex items-center gap-3">
-        <Badge className={`${statusInfo.className} text-xs px-2 py-0.5 font-medium`}>
+        <Badge className={`${statusInfo.badgeClassName} text-xs px-2 py-0.5 font-medium`}>
           {statusInfo.label}
         </Badge>
 
@@ -155,27 +163,53 @@ export function TransactionItem({
           {formatCurrency(transaction.amount)}
         </span>
 
-        {runningBalance !== undefined && (
-          <span
-            className={`font-mono text-sm w-28 text-right ${
-              runningBalance >= 0 ? "text-foreground" : "text-destructive"
-            }`}
-          >
-            {formatCurrency(runningBalance)}
-          </span>
+        {showDualBalance && runningBalanceReal !== undefined && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn(
+                  "font-mono text-sm w-28 text-right cursor-help",
+                  runningBalanceReal >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"
+                )}
+              >
+                {formatCurrency(runningBalanceReal)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Saldo Real (apenas transacoes pagas)</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {showDualBalance && runningBalancePrevisto !== undefined && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn(
+                  "font-mono text-sm w-28 text-right cursor-help",
+                  runningBalancePrevisto >= 0 ? "text-muted-foreground" : "text-destructive/70"
+                )}
+              >
+                {formatCurrency(runningBalancePrevisto)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Saldo Previsto (todas as transacoes)</p>
+            </TooltipContent>
+          </Tooltip>
         )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
-              Ações
+              Acoes
               <ChevronDown className="ml-1 h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit?.(transaction)}>
               <Pencil className="mr-2 h-4 w-4" />
-              Editar lançamento
+              Editar lancamento
             </DropdownMenuItem>
             {onToggleStatus && (
               <DropdownMenuItem onClick={() => onToggleStatus(transaction)}>
@@ -198,7 +232,7 @@ export function TransactionItem({
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Excluir lançamento
+              Excluir lancamento
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
