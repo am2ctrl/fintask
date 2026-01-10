@@ -7,6 +7,8 @@ import { PaymentFilters } from "../components/PaymentFilters";
 import { PaymentSummaryCards } from "../components/PaymentSummaryCards";
 import { PaymentTable } from "../components/PaymentTable";
 import { PaymentDetailModal } from "../components/PaymentDetailModal";
+import { BalanceSummaryCards } from "../components/BalanceSummaryCards";
+import { BalanceTable } from "../components/BalanceTable";
 import { TransactionModal } from "@/features/transactions/components/TransactionModal";
 import type { Transaction } from "@/features/transactions/components/TransactionItem";
 import type { Category } from "@/features/categories/components/CategoryBadge";
@@ -44,7 +46,7 @@ interface ApiCategory {
 
 export default function PaymentControlPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [activeTab, setActiveTab] = useState<"pagar" | "receber">("pagar");
+  const [activeTab, setActiveTab] = useState<"pagar" | "receber" | "balanco">("pagar");
   const [selectedPayment, setSelectedPayment] = useState<Transaction | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -122,9 +124,10 @@ export default function PaymentControlPage() {
           return false;
         }
 
-        // Filter by type (tab)
+        // Filter by type (tab) - balanco shows all types
         if (activeTab === "pagar" && t.type !== "expense") return false;
         if (activeTab === "receber" && t.type !== "income") return false;
+        // activeTab === "balanco" shows both income and expense
 
         // Filter by search
         if (filters.search && !t.name.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -248,29 +251,50 @@ export default function PaymentControlPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pagar" | "receber")}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pagar" | "receber" | "balanco")}>
         <TabsList>
           <TabsTrigger value="pagar">Contas a Pagar</TabsTrigger>
           <TabsTrigger value="receber">Contas a Receber</TabsTrigger>
+          <TabsTrigger value="balanco">Balanco Final</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="space-y-6">
-          <PaymentSummaryCards payments={filteredPayments} />
+        {activeTab !== "balanco" ? (
+          <TabsContent value={activeTab} className="space-y-6">
+            <PaymentSummaryCards payments={filteredPayments} />
 
-          <PaymentFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-          />
+            <PaymentFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
 
-          <PaymentTable
-            payments={filteredPayments}
-            onSelectPayment={setSelectedPayment}
-            onToggleStatus={handleToggleStatus}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddNew={() => setModalOpen(true)}
-          />
-        </TabsContent>
+            <PaymentTable
+              payments={filteredPayments}
+              onSelectPayment={setSelectedPayment}
+              onToggleStatus={handleToggleStatus}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onAddNew={() => setModalOpen(true)}
+            />
+          </TabsContent>
+        ) : (
+          <TabsContent value="balanco" className="space-y-6">
+            <BalanceSummaryCards payments={filteredPayments} />
+
+            <PaymentFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
+
+            <BalanceTable
+              payments={filteredPayments}
+              onSelectPayment={setSelectedPayment}
+              onToggleStatus={handleToggleStatus}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onAddNew={() => setModalOpen(true)}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <PaymentDetailModal
