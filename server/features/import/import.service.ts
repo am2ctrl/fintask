@@ -1,13 +1,13 @@
 import { storage } from '../../core/infrastructure/supabaseStorage';
 import { logger } from '../../core/logger';
-import type { TransactionSource } from '../../core/infrastructure/supabase';
+import type { TransactionSource, TransactionType } from '../../core/infrastructure/supabase';
 
 // Tipos para transações do Gemini
 interface GeminiTransaction {
   date: string;
   description: string;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   categoryId: string;
   mode?: "avulsa" | "parcelada";
   installment_number?: number | null;
@@ -77,12 +77,71 @@ export function calculateDueDate(
 }
 
 /**
+ * Detecta automaticamente o tipo de transação baseado na descrição
+ *
+ * Padrões detectados:
+ * - card_payment: Pagamentos de fatura de cartão
+ * - transfer_internal: Transferências entre contas próprias (PIX, TED, DOC)
+ * - income/expense: Mantém o tipo original
+ */
+export function detectTransactionTypeFromDescription(
+  description: string,
+  currentType: TransactionType,
+  statementType: 'credit_card' | 'checking'
+): TransactionType {
+  const desc = description.toUpperCase();
+
+  // Padrões de pagamento de fatura de cartão (só em extratos bancários)
+  if (statementType === 'checking') {
+    const cardPaymentPatterns = [
+      /PGTO\s*(DE\s*)?FATURA/,
+      /PAGAMENTO\s*(DE\s*)?FATURA/,
+      /PAG\s*CARTAO/,
+      /FATURA\s*CARTAO/,
+      /DEB\s*AUT.*CARTAO/,
+      /DEBITO\s*AUT.*FATURA/,
+    ];
+
+    for (const pattern of cardPaymentPatterns) {
+      if (pattern.test(desc)) {
+        logger.debug(`   💳 Detectado pagamento de fatura: ${description.substring(0, 40)}...`);
+        return 'card_payment';
+      }
+    }
+  }
+
+  // Padrões de transferência interna (só em extratos bancários)
+  // Nota: Usuário deve confirmar manualmente, pois nem toda transferência é interna
+  if (statementType === 'checking') {
+    const transferPatterns = [
+      /TRANSF\s*(ENTRE|P\/)\s*CONTAS/i,
+      /PIX\s*TRANSF.*MESMA\s*TITULARIDADE/i,
+      /TED\s*MESMA\s*TITULARIDADE/i,
+      // Padrões específicos que indicam transferência entre próprias contas
+      /RESGATE\s*(AUTOMATICO|AUTO)/i,
+      /APLICACAO\s*(AUTOMATICA|AUTO)/i,
+    ];
+
+    for (const pattern of transferPatterns) {
+      if (pattern.test(desc)) {
+        logger.debug(`   ↔️ Detectado transferência interna: ${description.substring(0, 40)}...`);
+        return 'transfer_internal';
+      }
+    }
+  }
+
+  // Mantém o tipo original
+  return currentType;
+}
+
+/**
  * Função de pós-processamento inteligente para transações extraídas pela IA
  *
  * Realiza:
  * 1. Filtragem de pagamentos de fatura (se cartão de crédito)
  * 2. Detecção de parcelamentos via regex (fallback)
  * 3. Mapeamento de nomes de adicionais para family_member_id
+ * 4. Detecção automática de tipo (transfer_internal, card_payment)
  */
 export async function postProcessTransactions(
   transactions: GeminiTransaction[],
@@ -241,9 +300,12 @@ export async function postProcessTransactions(
     return t;
   });
 
-  // 5. Adicionar dueDate, source e isPaid para integração com Pagamentos
+  // 5. Adicionar dueDate, source, isPaid e detectar tipo automaticamente
   // ⚡ Criar Map para lookup rápido de cartões por ID
   const cardsById = new Map(allCards.map(card => [card.id, card]));
+
+  let detectedTransfers = 0;
+  let detectedCardPayments = 0;
 
   const finalProcessed = processedWithCards.map((t: any) => {
     // Encontrar cartão associado (se houver)
@@ -261,15 +323,32 @@ export async function postProcessTransactions(
       ? 'credit_card_import'
       : 'bank_statement_import';
 
+    // 6. Detectar tipo automaticamente baseado na descrição
+    const detectedType = detectTransactionTypeFromDescription(
+      t.description,
+      t.type,
+      statementType as 'credit_card' | 'checking'
+    );
+
+    if (detectedType === 'transfer_internal') detectedTransfers++;
+    if (detectedType === 'card_payment') detectedCardPayments++;
+
     return {
       ...t,
+      type: detectedType,
       dueDate,
       source,
       isPaid: false, // Transações importadas começam como não pagas
     };
   });
 
-  logger.debug(`   ✅ Processamento concluído: ${finalProcessed.length} transações com dueDate e source`);
+  logger.debug(`   ✅ Processamento concluído: ${finalProcessed.length} transações`);
+  if (detectedTransfers > 0) {
+    logger.debug(`   ↔️ Detectadas ${detectedTransfers} transferências internas`);
+  }
+  if (detectedCardPayments > 0) {
+    logger.debug(`   💳 Detectados ${detectedCardPayments} pagamentos de fatura`);
+  }
 
   return finalProcessed;
 }

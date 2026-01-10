@@ -16,12 +16,19 @@ import {
 export type TransactionMode = "avulsa" | "parcelada";
 export type TransactionStatus = "paid" | "pending" | "overdue" | "due_today";
 export type TransactionSource = "manual" | "credit_card_import" | "bank_statement_import";
+// income/expense: Contam nos relatórios de gastos
+// transfer_internal: Transferência entre contas próprias (não conta em relatórios)
+// card_payment: Pagamento de fatura de cartão (não conta - já está detalhado na fatura)
+export type TransactionType = "income" | "expense" | "transfer_internal" | "card_payment";
+
+// Tipos que contam nos relatórios de receitas/despesas
+export const COUNTABLE_TRANSACTION_TYPES: TransactionType[] = ["income", "expense"];
 
 export interface Transaction {
   id: string;
   date: Date;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   category: Category;
   name: string;
   description?: string | null;
@@ -62,6 +69,44 @@ export const transactionModeInfo = {
     description: "Compra dividida em parcelas fixas. Ex: TV em 10x, celular em 12x, moveis em 6x.",
     icon: CreditCard,
     examples: ["TV 10x", "Celular 12x", "Geladeira 6x", "Viagem 8x"],
+  },
+};
+
+// Informações sobre tipos de transação (para badges e exibição)
+export const transactionTypeInfo: Record<TransactionType, {
+  label: string;
+  shortLabel: string;
+  description: string;
+  className: string;
+  countsInReports: boolean;
+}> = {
+  income: {
+    label: "Receita",
+    shortLabel: "Receita",
+    description: "Dinheiro que entrou no seu patrimônio",
+    className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    countsInReports: true,
+  },
+  expense: {
+    label: "Despesa",
+    shortLabel: "Despesa",
+    description: "Dinheiro que saiu do seu patrimônio",
+    className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    countsInReports: true,
+  },
+  transfer_internal: {
+    label: "Transferência Interna",
+    shortLabel: "Transf.",
+    description: "Dinheiro movido entre suas próprias contas (não afeta relatórios)",
+    className: "bg-slate-100 text-slate-600 dark:bg-slate-800/50 dark:text-slate-400",
+    countsInReports: false,
+  },
+  card_payment: {
+    label: "Pagamento de Fatura",
+    shortLabel: "Pgto Fatura",
+    description: "Pagamento de fatura de cartão de crédito (já detalhado nas compras)",
+    className: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+    countsInReports: false,
   },
 };
 
@@ -149,6 +194,20 @@ export function TransactionItem({
                 {transaction.familyMember.name.split(' ')[0]}
               </Badge>
             )}
+            {/* Badge para tipos especiais (transfer_internal, card_payment) */}
+            {(transaction.type === "transfer_internal" || transaction.type === "card_payment") && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge className={`${transactionTypeInfo[transaction.type].className} text-[10px] px-1.5 py-0 h-4`}>
+                    {transaction.type === "transfer_internal" ? "↔" : "💳"} {transactionTypeInfo[transaction.type].shortLabel}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-medium">{transactionTypeInfo[transaction.type].label}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{transactionTypeInfo[transaction.type].description}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </div>
@@ -160,10 +219,14 @@ export function TransactionItem({
 
         <span
           className={`font-mono text-sm font-semibold w-28 text-right ${
-            transaction.type === "income" ? "text-primary" : "text-destructive"
+            transaction.type === "income"
+              ? "text-primary"
+              : transaction.type === "transfer_internal" || transaction.type === "card_payment"
+              ? "text-muted-foreground"
+              : "text-destructive"
           }`}
         >
-          {transaction.type === "income" ? "+" : "-"}
+          {transaction.type === "income" ? "+" : transaction.type === "transfer_internal" || transaction.type === "card_payment" ? "↔" : "-"}
           {formatCurrency(transaction.amount)}
         </span>
 

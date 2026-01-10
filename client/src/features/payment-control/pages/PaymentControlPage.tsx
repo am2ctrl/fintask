@@ -10,7 +10,7 @@ import { PaymentDetailModal } from "../components/PaymentDetailModal";
 import { BalanceSummaryCards } from "../components/BalanceSummaryCards";
 import { BalanceTable } from "../components/BalanceTable";
 import { TransactionModal } from "@/features/transactions/components/TransactionModal";
-import type { Transaction } from "@/features/transactions/components/TransactionItem";
+import type { Transaction, TransactionType, TransactionSource } from "@/features/transactions/components/TransactionItem";
 import type { Category } from "@/features/categories/components/CategoryBadge";
 import { CircleDot, Loader2, Plus } from "lucide-react";
 import { apiRequest, queryClient } from "@/shared/lib/queryClient";
@@ -21,7 +21,7 @@ interface ApiTransaction {
   id: string;
   date: string;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   categoryId: string;
   name: string;
   description: string | null;
@@ -34,7 +34,7 @@ interface ApiTransaction {
   isPaid?: boolean;
   isRecurring?: boolean;
   recurringMonths?: number | null;
-  source?: "manual" | "credit_card_import" | "bank_statement_import";
+  source?: TransactionSource;
 }
 
 interface ApiCategory {

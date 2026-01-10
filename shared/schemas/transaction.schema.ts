@@ -1,9 +1,15 @@
 import { z } from 'zod';
 
 // Enums
-export const TransactionTypeSchema = z.enum(['income', 'expense']);
+// income/expense: Contam nos relatórios de gastos
+// transfer_internal: Transferência entre contas próprias (não conta em relatórios)
+// card_payment: Pagamento de fatura de cartão (não conta - já está detalhado na fatura)
+export const TransactionTypeSchema = z.enum(['income', 'expense', 'transfer_internal', 'card_payment']);
 export const TransactionModeSchema = z.enum(['avulsa', 'parcelada']);
 export const TransactionSourceSchema = z.enum(['manual', 'credit_card_import', 'bank_statement_import']);
+
+// Tipos que contam nos relatórios de receitas/despesas
+export const COUNTABLE_TRANSACTION_TYPES = ['income', 'expense'] as const;
 
 // Schema base (sem refine)
 const baseTransactionSchema = z.object({

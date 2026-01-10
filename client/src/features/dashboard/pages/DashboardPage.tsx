@@ -14,7 +14,8 @@ import { MonthCalendar } from "@/features/dashboard/components/MonthCalendar";
 import { MonthlyOverview } from "@/features/dashboard/components/MonthlyOverview";
 import { FamilySpendingCard } from "@/features/dashboard/components/FamilySpendingCard";
 import { UpcomingExpensesCard } from "@/features/dashboard/components/UpcomingExpensesCard";
-import type { Transaction } from "@/features/transactions/components/TransactionItem";
+import type { Transaction, TransactionType } from "@/features/transactions/components/TransactionItem";
+import { COUNTABLE_TRANSACTION_TYPES } from "@/features/transactions/components/TransactionItem";
 import type { Category } from "@/features/categories/components/CategoryBadge";
 import { CircleDot } from "lucide-react";
 import { apiRequest, queryClient } from "@/shared/lib/queryClient";
@@ -26,7 +27,7 @@ interface ApiTransaction {
   id: string;
   date: string;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   categoryId: string;
   name: string;
   description?: string | null;
@@ -117,6 +118,7 @@ export default function Dashboard() {
     );
   }, [transactions, monthInterval]);
 
+  // Só conta income e expense nos totais (transfer_internal e card_payment não afetam relatórios)
   const totalIncome = monthTransactions
     .filter((t) => t.type === "income")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -133,7 +135,11 @@ export default function Dashboard() {
       const date = subMonths(new Date(), i);
       const start = startOfMonth(date);
       const end = endOfMonth(date);
-      const monthTxs = transactions.filter((t) => isWithinInterval(t.date, { start, end }));
+      // Filtra apenas transações que contam em relatórios (income/expense)
+      const monthTxs = transactions.filter((t) =>
+        isWithinInterval(t.date, { start, end }) &&
+        COUNTABLE_TRANSACTION_TYPES.includes(t.type)
+      );
       months.push({
         month: format(date, "MMM", { locale: ptBR }),
         income: monthTxs.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0),
@@ -146,6 +152,7 @@ export default function Dashboard() {
   const categoryData = useMemo(() => {
     const expensesByCategory = new Map<string, { name: string; value: number; color: string }>();
 
+    // Só conta expense real (não transfer_internal nem card_payment)
     monthTransactions
       .filter((t) => t.type === "expense")
       .forEach((t) => {

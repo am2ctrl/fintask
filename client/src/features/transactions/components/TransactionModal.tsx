@@ -29,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import type { Transaction, TransactionMode } from "./TransactionItem";
+import type { Transaction, TransactionMode, TransactionType } from "./TransactionItem";
 import { transactionModeInfo } from "./TransactionItem";
 
 interface CategoryOption {
@@ -72,7 +72,9 @@ export function TransactionModal({
 
   useEffect(() => {
     if (transaction) {
-      setType(transaction.type);
+      // Para tipos especiais (transfer_internal, card_payment), usar expense como fallback no modal
+      const normalizedType = transaction.type === "income" ? "income" : "expense";
+      setType(normalizedType);
       setAmount(transaction.amount.toString());
       setDate(transaction.date);
       setCategoryId(transaction.category.id);

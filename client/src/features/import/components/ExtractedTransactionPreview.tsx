@@ -23,12 +23,14 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
 
+import type { TransactionType } from "@/features/transactions/components/TransactionItem";
+
 export interface ExtractedTransaction {
   id: string;
   date: Date;
   description: string;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   suggestedCategory: Category;
   confidence: number;
   selected: boolean;
@@ -62,12 +64,14 @@ export function ExtractedTransactionPreview({
   isLoading,
 }: ExtractedTransactionPreviewProps) {
   const selectedCount = transactions.filter((t) => t.selected).length;
+  // Só conta income e expense nos totais (transfer_internal e card_payment não afetam)
   const totalIncome = transactions
     .filter((t) => t.selected && t.type === "income")
     .reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions
     .filter((t) => t.selected && t.type === "expense")
     .reduce((sum, t) => sum + t.amount, 0);
+  const transferCount = transactions.filter((t) => t.selected && (t.type === "transfer_internal" || t.type === "card_payment")).length;
   const refundCount = transactions.filter((t) => t.isRefund).length;
 
   const toggleAll = (selected: boolean) => {
@@ -93,14 +97,17 @@ export function ExtractedTransactionPreview({
     }
   };
 
-  const updateType = (id: string, type: "income" | "expense") => {
+  const updateType = (id: string, type: TransactionType) => {
     onTransactionsChange(
       transactions.map((t) => (t.id === id ? { ...t, type } : t))
     );
   };
 
-  const filteredCategories = (type: "income" | "expense") =>
-    defaultCategories.filter((c) => c.type === type);
+  // Mapear tipos para categorias: transfer_internal e card_payment usam categorias de expense
+  const filteredCategories = (type: TransactionType) => {
+    const categoryType = type === "income" ? "income" : "expense";
+    return defaultCategories.filter((c) => c.type === categoryType);
+  };
 
   const statementInfo = statementType === "checking" 
     ? { icon: Wallet, label: "Conta Corrente", color: "text-chart-2", bg: "bg-chart-2/10" }
@@ -126,6 +133,11 @@ export function ExtractedTransactionPreview({
               <Badge variant="secondary" className="gap-1">
                 <RefreshCcw className="w-3 h-3" />
                 {refundCount} estorno{refundCount > 1 ? "s" : ""}
+              </Badge>
+            )}
+            {transferCount > 0 && (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                ↔ {transferCount} transf.
               </Badge>
             )}
             <div className="flex items-center gap-4 text-sm">
@@ -235,10 +247,10 @@ export function ExtractedTransactionPreview({
             <Select
               value={transaction.type}
               onValueChange={(v) =>
-                updateType(transaction.id, v as "income" | "expense")
+                updateType(transaction.id, v as TransactionType)
               }
             >
-              <SelectTrigger className="w-28" data-testid={`select-type-${transaction.id}`}>
+              <SelectTrigger className="w-36" data-testid={`select-type-${transaction.id}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -247,6 +259,12 @@ export function ExtractedTransactionPreview({
                 </SelectItem>
                 <SelectItem value="expense">
                   {statementType === "credit_card" ? "Compra" : "Despesa"}
+                </SelectItem>
+                <SelectItem value="transfer_internal">
+                  Transf. Interna
+                </SelectItem>
+                <SelectItem value="card_payment">
+                  Pgto Fatura
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -284,10 +302,12 @@ export function ExtractedTransactionPreview({
               className={`w-28 text-right font-mono text-sm font-semibold ${
                 transaction.type === "income"
                   ? "text-primary"
+                  : transaction.type === "transfer_internal" || transaction.type === "card_payment"
+                  ? "text-muted-foreground"
                   : "text-destructive"
               }`}
             >
-              {transaction.type === "income" ? "+" : "-"}
+              {transaction.type === "income" ? "+" : transaction.type === "transfer_internal" || transaction.type === "card_payment" ? "↔" : "-"}
               {formatCurrency(transaction.amount)}
             </span>
           </div>

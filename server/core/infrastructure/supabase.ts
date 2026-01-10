@@ -41,11 +41,13 @@ export interface DbCategory {
 
 export type TransactionSource = 'manual' | 'credit_card_import' | 'bank_statement_import';
 
+export type TransactionType = "income" | "expense" | "transfer_internal" | "card_payment";
+
 export interface DbTransaction {
   id: string;
   date: string;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   category_id: string;
   name: string;
   description: string | null;

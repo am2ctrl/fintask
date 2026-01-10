@@ -5,6 +5,7 @@ import {
   type DbCreditCard,
   type TransactionMode,
   type TransactionSource,
+  type TransactionType,
   type DbFamilyGroup,
   type DbFamilyGroupMember,
   type DbDeletionRequest,
@@ -41,7 +42,7 @@ export interface Transaction {
   id: string;
   date: Date;
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   categoryId: string;
   name: string;
   description: string | null;
@@ -60,7 +61,7 @@ export interface Transaction {
 export interface InsertTransaction {
   date: Date | string; // Aceita Date ou string YYYY-MM-DD
   amount: number;
-  type: "income" | "expense";
+  type: TransactionType;
   categoryId: string;
   name: string;
   description?: string | null;
