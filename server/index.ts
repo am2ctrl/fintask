@@ -16,6 +16,7 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: '10mb', // Aumentado para suportar importações grandes (centenas de transações)
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
