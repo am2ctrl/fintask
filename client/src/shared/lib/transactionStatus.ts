@@ -40,8 +40,8 @@ export function getTransactionStatusInfo(transaction: {
       return {
         status: "due_today",
         label: "Vence Hoje",
-        badgeClassName: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-        rowClassName: "border-l-4 border-l-orange-500 bg-orange-50/50 dark:bg-orange-950/20",
+        badgeClassName: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+        rowClassName: "border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20",
       };
     }
   }
@@ -49,7 +49,7 @@ export function getTransactionStatusInfo(transaction: {
   return {
     status: "pending",
     label: "Em Aberto",
-    badgeClassName: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+    badgeClassName: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
     rowClassName: "opacity-70",
   };
 }
