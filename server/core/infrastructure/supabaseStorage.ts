@@ -4,6 +4,7 @@ import {
   type DbTransaction,
   type DbCreditCard,
   type TransactionMode,
+  type TransactionSource,
   type DbFamilyGroup,
   type DbFamilyGroupMember,
   type DbDeletionRequest,
@@ -53,6 +54,7 @@ export interface Transaction {
   isPaid: boolean;
   isRecurring: boolean;
   recurringMonths: number | null;
+  source: TransactionSource;
 }
 
 export interface InsertTransaction {
@@ -71,6 +73,7 @@ export interface InsertTransaction {
   isPaid?: boolean;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  source?: TransactionSource; // Origem: manual, credit_card_import, bank_statement_import
 }
 
 export interface CreditCard {
@@ -282,6 +285,7 @@ function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
     isPaid: dbTx.is_paid || false,
     isRecurring: dbTx.is_recurring || false,
     recurringMonths: dbTx.recurring_months || null,
+    source: dbTx.source || 'manual',
   };
 }
 
@@ -424,6 +428,7 @@ export class SupabaseStorage implements IStorage {
         is_paid: transaction.isPaid || false,
         is_recurring: transaction.isRecurring || false,
         recurring_months: transaction.recurringMonths || null,
+        source: transaction.source || 'manual',
         user_id: userId || null,
       })
       .select()
@@ -489,6 +494,7 @@ export class SupabaseStorage implements IStorage {
         is_paid: tx.isPaid || false,
         is_recurring: tx.isRecurring || false,
         recurring_months: tx.recurringMonths || null,
+        source: tx.source || 'manual',
         user_id: userId,
       };
 
@@ -1095,6 +1101,7 @@ export class SupabaseStorage implements IStorage {
         is_paid: transaction.isPaid || false,
         is_recurring: transaction.isRecurring || false,
         recurring_months: transaction.recurringMonths || null,
+        source: transaction.source || 'manual',
         user_id: userId,
         created_by_user_id: userId,
         family_group_id: familyGroupId,
@@ -1123,6 +1130,7 @@ export class SupabaseStorage implements IStorage {
       is_paid: tx.isPaid || false,
       is_recurring: tx.isRecurring || false,
       recurring_months: tx.recurringMonths || null,
+      source: tx.source || 'manual',
       user_id: userId,
       created_by_user_id: userId,
       family_group_id: familyGroupId,

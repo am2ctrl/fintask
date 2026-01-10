@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Check, RotateCcw, Eye, Pencil, Trash2, ChevronDown, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Check, RotateCcw, Eye, Pencil, Trash2, ChevronDown, ArrowUpCircle, ArrowDownCircle, Import } from "lucide-react";
 import { formatCurrency } from "@/features/dashboard/components/SummaryCard";
 import type { Transaction } from "@/features/transactions/components/TransactionItem";
 import { getTransactionStatusInfo } from "@/shared/lib/transactionStatus";
@@ -39,7 +39,18 @@ export function BalanceRow({ payment, onClick, onToggleStatus, onEdit, onDelete 
       </div>
 
       <div>
-        <p className="text-sm font-medium">{payment.name}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">{payment.name}</p>
+          {payment.source && payment.source !== "manual" && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+            >
+              <Import className="w-3 h-3 mr-1" />
+              Importado
+            </Badge>
+          )}
+        </div>
         {(payment.isRecurring || payment.mode === "parcelada") && payment.installmentNumber && payment.installmentsTotal && (
           <Badge variant="outline" className="text-[10px] mt-1">
             {payment.installmentNumber}/{payment.installmentsTotal}

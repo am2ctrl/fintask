@@ -39,6 +39,8 @@ export interface DbCategory {
   created_at: string;
 }
 
+export type TransactionSource = 'manual' | 'credit_card_import' | 'bank_statement_import';
+
 export interface DbTransaction {
   id: string;
   date: string;
@@ -56,6 +58,7 @@ export interface DbTransaction {
   is_paid: boolean;
   is_recurring: boolean;
   recurring_months: number | null;
+  source: TransactionSource;
   created_at: string;
 }
 

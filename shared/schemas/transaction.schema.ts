@@ -3,6 +3,7 @@ import { z } from 'zod';
 // Enums
 export const TransactionTypeSchema = z.enum(['income', 'expense']);
 export const TransactionModeSchema = z.enum(['avulsa', 'parcelada']);
+export const TransactionSourceSchema = z.enum(['manual', 'credit_card_import', 'bank_statement_import']);
 
 // Schema base (sem refine)
 const baseTransactionSchema = z.object({
@@ -21,6 +22,7 @@ const baseTransactionSchema = z.object({
   isPaid: z.boolean().optional().default(false),
   isRecurring: z.boolean().optional().default(false),
   recurringMonths: z.number().int().positive().optional().nullable(),
+  source: TransactionSourceSchema.optional().default('manual'),
 });
 
 // Schema para criar transação (com validação de parcelamento)

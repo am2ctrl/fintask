@@ -1,5 +1,6 @@
 import { storage } from '../../core/infrastructure/supabaseStorage';
 import { logger } from '../../core/logger';
+import type { TransactionSource } from '../../core/infrastructure/supabase';
 
 // Tipos para transações do Gemini
 interface GeminiTransaction {
@@ -12,6 +13,67 @@ interface GeminiTransaction {
   installment_number?: number | null;
   installments_total?: number | null;
   card_holder_name?: string | null;
+}
+
+/**
+ * Calcula a data de vencimento (dueDate) para transações importadas
+ *
+ * Para cartões de crédito:
+ * - Usa closingDay e dueDay do cartão para determinar o ciclo de faturamento
+ * - Transações antes do fechamento: vencem no mesmo mês
+ * - Transações após fechamento: vencem no próximo mês
+ *
+ * Para extratos bancários:
+ * - Usa a própria data da transação (já ocorreu)
+ */
+export function calculateDueDate(
+  transactionDate: Date | string,
+  statementType: 'credit_card' | 'checking',
+  card?: { closingDay: number | null; dueDay: number | null }
+): string | null {
+  const txDate = typeof transactionDate === 'string'
+    ? new Date(transactionDate + 'T12:00:00')
+    : transactionDate;
+
+  if (statementType === 'checking') {
+    // Extrato bancário: usar data da transação (já ocorreu)
+    const year = txDate.getFullYear();
+    const month = String(txDate.getMonth() + 1).padStart(2, '0');
+    const day = String(txDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  if (statementType === 'credit_card') {
+    // Cartão de crédito: calcular baseado no ciclo de faturamento
+    const closingDay = card?.closingDay || 1; // Default: fecha dia 1
+    const dueDay = card?.dueDay || 10; // Default: vence dia 10
+
+    const txDay = txDate.getDate();
+    const txMonth = txDate.getMonth();
+    const txYear = txDate.getFullYear();
+
+    let dueMonth: number;
+    let dueYear: number;
+
+    if (txDay < closingDay) {
+      // Transação antes do fechamento: vence no mesmo mês
+      dueMonth = txMonth;
+      dueYear = txYear;
+    } else {
+      // Transação no dia ou após fechamento: vence no próximo mês
+      dueMonth = txMonth + 1;
+      dueYear = txYear;
+      if (dueMonth > 11) {
+        dueMonth = 0;
+        dueYear++;
+      }
+    }
+
+    // Formatar como YYYY-MM-DD
+    return `${dueYear}-${String(dueMonth + 1).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
+  }
+
+  return null;
 }
 
 /**
@@ -179,5 +241,35 @@ export async function postProcessTransactions(
     return t;
   });
 
-  return processedWithCards;
+  // 5. Adicionar dueDate, source e isPaid para integração com Pagamentos
+  // ⚡ Criar Map para lookup rápido de cartões por ID
+  const cardsById = new Map(allCards.map(card => [card.id, card]));
+
+  const finalProcessed = processedWithCards.map((t: any) => {
+    // Encontrar cartão associado (se houver)
+    const matchedCard = t.cardId ? cardsById.get(t.cardId) : null;
+
+    // Calcular dueDate baseado no tipo de extrato
+    const dueDate = calculateDueDate(
+      t.date,
+      statementType as 'credit_card' | 'checking',
+      matchedCard ? { closingDay: matchedCard.closingDay, dueDay: matchedCard.dueDay } : undefined
+    );
+
+    // Determinar source baseado no tipo de extrato
+    const source: TransactionSource = statementType === 'credit_card'
+      ? 'credit_card_import'
+      : 'bank_statement_import';
+
+    return {
+      ...t,
+      dueDate,
+      source,
+      isPaid: false, // Transações importadas começam como não pagas
+    };
+  });
+
+  logger.debug(`   ✅ Processamento concluído: ${finalProcessed.length} transações com dueDate e source`);
+
+  return finalProcessed;
 }

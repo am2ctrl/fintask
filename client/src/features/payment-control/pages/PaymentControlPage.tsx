@@ -34,6 +34,7 @@ interface ApiTransaction {
   isPaid?: boolean;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  source?: "manual" | "credit_card_import" | "bank_statement_import";
 }
 
 interface ApiCategory {
@@ -105,6 +106,7 @@ export default function PaymentControlPage() {
       isPaid: t.isPaid ?? false,
       isRecurring: t.isRecurring ?? false,
       recurringMonths: t.recurringMonths ?? undefined,
+      source: t.source || "manual",
     } as Transaction));
   }, [apiTransactions, categoriesMap]);
 

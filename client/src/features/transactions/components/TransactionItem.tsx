@@ -15,6 +15,7 @@ import {
 
 export type TransactionMode = "avulsa" | "parcelada";
 export type TransactionStatus = "paid" | "pending" | "overdue" | "due_today";
+export type TransactionSource = "manual" | "credit_card_import" | "bank_statement_import";
 
 export interface Transaction {
   id: string;
@@ -41,6 +42,7 @@ export interface Transaction {
   isPaid?: boolean;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  source?: TransactionSource;
 }
 
 export const transactionModeInfo = {
