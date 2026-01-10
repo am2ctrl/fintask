@@ -52,10 +52,13 @@ export function registerImportRoutes(app: Express) {
 
       // PASSO 1: Parser local inteligente (RÁPIDO - sem IA)
       logger.debug("\n🔍 PASSO 1: Parsing local com regex...");
-      const parseResult = parseStatement(text);
+      // Usar tipo informado pelo usuário se disponível
+      const userStatementType = statementType === "credit_card" ? "credit_card" :
+                                statementType === "checking" ? "checking" : null;
+      const parseResult = parseStatement(text, userStatementType);
 
       logger.debug(`   ✓ Banco detectado: ${parseResult.bank}`);
-      logger.debug(`   ✓ Tipo: ${parseResult.statementType}`);
+      logger.debug(`   ✓ Tipo: ${parseResult.statementType}${userStatementType ? ' (informado pelo usuário)' : ' (auto-detectado)'}`);
       logger.debug(`   ✓ Transações encontradas: ${parseResult.transactions.length}`);
       logger.debug(`   ✓ Confiança: ${(parseResult.metadata.confidence * 100).toFixed(0)}%`);
       logger.debug(`   ✓ Método: ${parseResult.metadata.parsingMethod}`);
