@@ -147,7 +147,8 @@ export async function postProcessTransactions(
   transactions: GeminiTransaction[],
   statementType: string,
   userId: string,
-  allCards?: any[]  // ⚡ OTIMIZAÇÃO: Aceitar cartões pré-carregados para evitar query duplicada
+  allCards?: any[],  // ⚡ OTIMIZAÇÃO: Aceitar cartões pré-carregados para evitar query duplicada
+  sourceBank?: string  // Banco de origem detectado
 ): Promise<any[]> {
 
   // 1. Filtrar pagamentos de fatura (se for cartão de crédito)
@@ -338,6 +339,7 @@ export async function postProcessTransactions(
       type: detectedType,
       dueDate,
       source,
+      sourceBank: sourceBank || null, // Banco de origem detectado
       isPaid: false, // Transações importadas começam como não pagas
     };
   });

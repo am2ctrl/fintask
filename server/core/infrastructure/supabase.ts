@@ -61,6 +61,7 @@ export interface DbTransaction {
   is_recurring: boolean;
   recurring_months: number | null;
   source: TransactionSource;
+  source_bank: string | null;
   created_at: string;
 }
 

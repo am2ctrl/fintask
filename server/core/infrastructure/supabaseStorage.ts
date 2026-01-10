@@ -56,6 +56,7 @@ export interface Transaction {
   isRecurring: boolean;
   recurringMonths: number | null;
   source: TransactionSource;
+  sourceBank: string | null;
 }
 
 export interface InsertTransaction {
@@ -75,6 +76,7 @@ export interface InsertTransaction {
   isRecurring?: boolean;
   recurringMonths?: number | null;
   source?: TransactionSource; // Origem: manual, credit_card_import, bank_statement_import
+  sourceBank?: string | null; // Banco de origem (para importações)
 }
 
 export interface CreditCard {
@@ -287,6 +289,7 @@ function dbTransactionToTransaction(dbTx: DbTransaction): Transaction {
     isRecurring: dbTx.is_recurring || false,
     recurringMonths: dbTx.recurring_months || null,
     source: dbTx.source || 'manual',
+    sourceBank: dbTx.source_bank || null,
   };
 }
 
@@ -430,6 +433,7 @@ export class SupabaseStorage implements IStorage {
         is_recurring: transaction.isRecurring || false,
         recurring_months: transaction.recurringMonths || null,
         source: transaction.source || 'manual',
+        source_bank: transaction.sourceBank || null,
         user_id: userId || null,
       })
       .select()
@@ -456,6 +460,7 @@ export class SupabaseStorage implements IStorage {
     if (updates.isPaid !== undefined) updateData.is_paid = updates.isPaid;
     if (updates.isRecurring !== undefined) updateData.is_recurring = updates.isRecurring;
     if (updates.recurringMonths !== undefined) updateData.recurring_months = updates.recurringMonths;
+    if (updates.sourceBank !== undefined) updateData.source_bank = updates.sourceBank;
 
     const { data, error } = await supabase
       .from("transactions")
@@ -496,6 +501,7 @@ export class SupabaseStorage implements IStorage {
         is_recurring: tx.isRecurring || false,
         recurring_months: tx.recurringMonths || null,
         source: tx.source || 'manual',
+        source_bank: tx.sourceBank || null,
         user_id: userId,
       };
 
@@ -1103,6 +1109,7 @@ export class SupabaseStorage implements IStorage {
         is_recurring: transaction.isRecurring || false,
         recurring_months: transaction.recurringMonths || null,
         source: transaction.source || 'manual',
+        source_bank: transaction.sourceBank || null,
         user_id: userId,
         created_by_user_id: userId,
         family_group_id: familyGroupId,
@@ -1132,6 +1139,7 @@ export class SupabaseStorage implements IStorage {
       is_recurring: tx.isRecurring || false,
       recurring_months: tx.recurringMonths || null,
       source: tx.source || 'manual',
+      source_bank: tx.sourceBank || null,
       user_id: userId,
       created_by_user_id: userId,
       family_group_id: familyGroupId,

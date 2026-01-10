@@ -167,7 +167,9 @@ export function registerImportRoutes(app: Express) {
         const processed = await postProcessTransactions(
           aiTransactions,
           statementType || parseResult.statementType,
-          userId
+          userId,
+          undefined, // allCards
+          parseResult.bank // sourceBank
         );
 
         const categoryMap = new Map(categories.map(c => [c.id, c.name]));
@@ -218,7 +220,8 @@ export function registerImportRoutes(app: Express) {
         categorized as any[],
         statementType || parseResult.statementType,
         userId,
-        allCards  // ⚡ Passar cartões já carregados para evitar query duplicada
+        allCards,  // ⚡ Passar cartões já carregados para evitar query duplicada
+        parseResult.bank // sourceBank
       );
 
       // PASSO 6: Retornar categoryId E category name (para compatibilidade com frontend)

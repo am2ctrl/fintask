@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Check, RotateCcw, Eye, Pencil, Trash2, ChevronDown, Send, Import } from "lucide-react";
+import { Check, RotateCcw, Eye, Pencil, Trash2, ChevronDown, Send, Landmark, CreditCard, FileText } from "lucide-react";
 import { formatCurrency } from "@/features/dashboard/components/SummaryCard";
 import type { Transaction } from "@/features/transactions/components/TransactionItem";
 import { getTransactionStatusInfo } from "@/shared/lib/transactionStatus";
@@ -56,13 +56,33 @@ export function PaymentRow({ payment, onClick, onToggleStatus, onEdit, onDelete 
         <div>
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">{payment.name}</p>
-            {payment.source && payment.source !== "manual" && (
+            {/* Badge de origem: Extrato ou Fatura */}
+            {payment.source === "bank_statement_import" && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              >
+                <Landmark className="w-3 h-3 mr-1" />
+                Extrato
+              </Badge>
+            )}
+            {payment.source === "credit_card_import" && (
               <Badge
                 variant="secondary"
                 className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
               >
-                <Import className="w-3 h-3 mr-1" />
-                Importado
+                <CreditCard className="w-3 h-3 mr-1" />
+                Fatura
+              </Badge>
+            )}
+            {/* Badge de banco de origem */}
+            {(payment as any).sourceBank && (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0 h-4 border-slate-400/50 text-slate-600 dark:text-slate-400"
+              >
+                <FileText className="w-3 h-3 mr-1" />
+                {(payment as any).sourceBank}
               </Badge>
             )}
           </div>

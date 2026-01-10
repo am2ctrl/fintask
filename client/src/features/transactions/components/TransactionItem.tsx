@@ -1,6 +1,6 @@
 import { format, isBefore, startOfDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Repeat, CreditCard, Check, RotateCcw } from "lucide-react";
+import { Repeat, CreditCard, Check, RotateCcw, FileText, Landmark } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CategoryBadge, type Category } from "@/features/categories/components/CategoryBadge";
@@ -50,6 +50,7 @@ export interface Transaction {
   isRecurring?: boolean;
   recurringMonths?: number | null;
   source?: TransactionSource;
+  sourceBank?: string | null;
 }
 
 export const transactionModeInfo = {
@@ -193,6 +194,41 @@ export function TransactionItem({
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-purple-500/50 text-purple-600 dark:text-purple-400">
                 {transaction.familyMember.name.split(' ')[0]}
               </Badge>
+            )}
+            {/* Badge de origem: Extrato ou Fatura */}
+            {transaction.source === "bank_statement_import" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+                    <Landmark className="w-3 h-3 mr-1" />
+                    Extrato
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>Importado de extrato bancário</TooltipContent>
+              </Tooltip>
+            )}
+            {transaction.source === "credit_card_import" && !transaction.card && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-500/50 text-blue-600 dark:text-blue-400">
+                    <CreditCard className="w-3 h-3 mr-1" />
+                    Fatura
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>Importado de fatura de cartão</TooltipContent>
+              </Tooltip>
+            )}
+            {/* Badge de banco de origem */}
+            {transaction.sourceBank && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-slate-400/50 text-slate-600 dark:text-slate-400">
+                    <FileText className="w-3 h-3 mr-1" />
+                    {transaction.sourceBank}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>Banco de origem: {transaction.sourceBank}</TooltipContent>
+              </Tooltip>
             )}
             {/* Badge para tipos especiais (transfer_internal, card_payment) */}
             {(transaction.type === "transfer_internal" || transaction.type === "card_payment") && (

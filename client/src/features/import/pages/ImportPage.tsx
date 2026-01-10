@@ -85,6 +85,7 @@ export default function Import() {
             // Preserve backend fields for payment control integration
             dueDate: t.dueDate,
             source: t.source,
+            sourceBank: t.sourceBank,
             cardId: t.cardId,
             familyMemberId: t.familyMemberId,
             isPaid: t.isPaid ?? false,
@@ -125,6 +126,7 @@ export default function Import() {
         // Pass all fields from backend for payment control integration
         dueDate: t.dueDate,
         source: t.source,
+        sourceBank: t.sourceBank,
         cardId: t.cardId,
         familyMemberId: t.familyMemberId,
         isPaid: t.isPaid ?? false,

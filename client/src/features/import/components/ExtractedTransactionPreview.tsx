@@ -38,6 +38,7 @@ export interface ExtractedTransaction {
   // Fields from backend for payment control integration
   dueDate?: string;
   source?: "manual" | "credit_card_import" | "bank_statement_import";
+  sourceBank?: string | null; // Banco de origem (Inter, Nubank, etc.)
   cardId?: string;
   familyMemberId?: string;
   isPaid?: boolean;

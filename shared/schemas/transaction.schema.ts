@@ -29,6 +29,7 @@ const baseTransactionSchema = z.object({
   isRecurring: z.boolean().optional().default(false),
   recurringMonths: z.number().int().positive().optional().nullable(),
   source: TransactionSourceSchema.optional().default('manual'),
+  sourceBank: z.string().max(50).optional().nullable(), // Banco de origem (para importações)
 });
 
 // Schema para criar transação (com validação de parcelamento)
