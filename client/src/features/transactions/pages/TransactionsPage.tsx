@@ -1,11 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { isWithinInterval } from "date-fns";
-import { Button } from "@/shared/components/ui/button";
 import { TransactionList } from "@/features/transactions/components/TransactionList";
-import { TransactionModal } from "@/features/transactions/components/TransactionModal";
 import { TransactionFilters, type FilterState } from "@/features/transactions/components/TransactionFilters";
 import { MonthNavigator, getMonthDateRange } from "@/features/transactions/components/MonthNavigator";
 import { TransactionSummaryCards } from "@/features/transactions/components/TransactionSummaryCards";
@@ -44,8 +42,6 @@ interface ApiCategory {
 
 export default function Transactions() {
   const [location] = useLocation();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [filters, setFilters] = useState<FilterState>(() => {
     const { dateFrom, dateTo } = getMonthDateRange(new Date());
@@ -167,20 +163,6 @@ export default function Transactions() {
 
   const { summary, runningBalances } = useTransactionCalculations(filteredTransactions);
 
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/transactions", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transacao criada com sucesso" });
-    },
-    onError: () => {
-      toast({ title: "Erro", description: "Falha ao criar transacao", variant: "destructive" });
-    },
-  });
-
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const res = await apiRequest("PATCH", `/api/transactions/${id}`, data);
@@ -188,43 +170,12 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transacao atualizada" });
+      toast({ title: "Sucesso", description: "Status atualizado" });
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao atualizar", variant: "destructive" });
     },
   });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/transactions/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Transacao removida" });
-    },
-    onError: () => {
-      toast({ title: "Erro", description: "Falha ao remover", variant: "destructive" });
-    },
-  });
-
-  const handleSave = (data: any) => {
-    if (editingTransaction) {
-      updateMutation.mutate({ id: editingTransaction.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
-    setEditingTransaction(null);
-  };
-
-  const handleEdit = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setModalOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
-  };
 
   const handleToggleStatus = (transaction: Transaction) => {
     updateMutation.mutate({
@@ -249,19 +200,13 @@ export default function Transactions() {
         <div>
           <h1 className="text-2xl font-semibold">Transacoes</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie todas as suas transacoes
+            Visualize todas as suas movimentacoes
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <MonthNavigator
-            currentMonth={currentMonth}
-            onMonthChange={handleMonthChange}
-          />
-          <Button onClick={() => setModalOpen(true)} data-testid="button-new-transaction">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Registro
-          </Button>
-        </div>
+        <MonthNavigator
+          currentMonth={currentMonth}
+          onMonthChange={handleMonthChange}
+        />
       </div>
 
       <TransactionSummaryCards summary={summary} />
@@ -279,21 +224,7 @@ export default function Transactions() {
         showHeader={true}
         showRunningBalance={true}
         runningBalances={runningBalances}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
         onToggleStatus={handleToggleStatus}
-        onAddNew={() => setModalOpen(true)}
-      />
-
-      <TransactionModal
-        open={modalOpen}
-        onOpenChange={(open) => {
-          setModalOpen(open);
-          if (!open) setEditingTransaction(null);
-        }}
-        transaction={editingTransaction}
-        categories={categoriesList}
-        onSave={handleSave}
       />
     </div>
   );

@@ -1,14 +1,16 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { Button } from "@/shared/components/ui/button";
 import { MonthYearNavigator } from "../components/MonthYearNavigator";
 import { PaymentFilters } from "../components/PaymentFilters";
 import { PaymentSummaryCards } from "../components/PaymentSummaryCards";
 import { PaymentTable } from "../components/PaymentTable";
 import { PaymentDetailModal } from "../components/PaymentDetailModal";
+import { TransactionModal } from "@/features/transactions/components/TransactionModal";
 import type { Transaction } from "@/features/transactions/components/TransactionItem";
 import type { Category } from "@/features/categories/components/CategoryBadge";
-import { CircleDot, Loader2 } from "lucide-react";
+import { CircleDot, Loader2, Plus } from "lucide-react";
 import { apiRequest, queryClient } from "@/shared/lib/queryClient";
 import { getIconByName } from "@/shared/lib/iconMap";
 import { useToast } from "@/shared/hooks/use-toast";
@@ -44,6 +46,8 @@ export default function PaymentControlPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<"pagar" | "receber">("pagar");
   const [selectedPayment, setSelectedPayment] = useState<Transaction | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [filters, setFilters] = useState({
     search: "",
     accountId: "all",
@@ -143,6 +147,20 @@ export default function PaymentControlPage() {
       });
   }, [transactions, currentMonth, activeTab, filters]);
 
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/transactions", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({ title: "Sucesso", description: "Conta criada com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao criar conta", variant: "destructive" });
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const res = await apiRequest("PATCH", `/api/transactions/${id}`, data);
@@ -150,10 +168,23 @@ export default function PaymentControlPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      toast({ title: "Sucesso", description: "Pagamento atualizado" });
+      toast({ title: "Sucesso", description: "Conta atualizada" });
     },
     onError: () => {
       toast({ title: "Erro", description: "Falha ao atualizar", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/transactions/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({ title: "Sucesso", description: "Conta removida" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao remover", variant: "destructive" });
     },
   });
 
@@ -164,8 +195,25 @@ export default function PaymentControlPage() {
     });
   };
 
+  const handleSave = (data: any) => {
+    if (editingTransaction) {
+      updateMutation.mutate({ id: editingTransaction.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+    setEditingTransaction(null);
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
   const handleSavePayment = (data: any) => {
-    // Future: implement update logic
     setSelectedPayment(null);
   };
 
@@ -188,10 +236,16 @@ export default function PaymentControlPage() {
             Gerencie contas a pagar e receber
           </p>
         </div>
-        <MonthYearNavigator
-          currentMonth={currentMonth}
-          onMonthChange={setCurrentMonth}
-        />
+        <div className="flex items-center gap-4">
+          <MonthYearNavigator
+            currentMonth={currentMonth}
+            onMonthChange={setCurrentMonth}
+          />
+          <Button onClick={() => setModalOpen(true)} data-testid="button-new-payment">
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Conta
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pagar" | "receber")}>
@@ -212,6 +266,9 @@ export default function PaymentControlPage() {
             payments={filteredPayments}
             onSelectPayment={setSelectedPayment}
             onToggleStatus={handleToggleStatus}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddNew={() => setModalOpen(true)}
           />
         </TabsContent>
       </Tabs>
@@ -221,6 +278,17 @@ export default function PaymentControlPage() {
         payment={selectedPayment}
         onOpenChange={(open) => !open && setSelectedPayment(null)}
         onSave={handleSavePayment}
+      />
+
+      <TransactionModal
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) setEditingTransaction(null);
+        }}
+        transaction={editingTransaction}
+        categories={categoriesList}
+        onSave={handleSave}
       />
     </div>
   );

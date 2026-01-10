@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Pencil, Trash2, Repeat, CreditCard, ChevronDown, Check, RotateCcw } from "lucide-react";
+import { Repeat, CreditCard, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CategoryBadge, type Category } from "@/features/categories/components/CategoryBadge";
@@ -12,13 +12,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 
 export type TransactionMode = "avulsa" | "parcelada";
 export type TransactionStatus = "paid" | "pending" | "overdue";
@@ -89,8 +82,6 @@ interface TransactionItemProps {
   runningBalanceReal?: number;
   runningBalancePrevisto?: number;
   showDualBalance?: boolean;
-  onEdit?: (transaction: Transaction) => void;
-  onDelete?: (id: string) => void;
   onToggleStatus?: (transaction: Transaction) => void;
 }
 
@@ -99,8 +90,6 @@ export function TransactionItem({
   runningBalanceReal,
   runningBalancePrevisto,
   showDualBalance = true,
-  onEdit,
-  onDelete,
   onToggleStatus
 }: TransactionItemProps) {
   const mode = transaction.mode || "avulsa";
@@ -199,43 +188,33 @@ export function TransactionItem({
           </Tooltip>
         )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8">
-              Acoes
-              <ChevronDown className="ml-1 h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit?.(transaction)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar lancamento
-            </DropdownMenuItem>
-            {onToggleStatus && (
-              <DropdownMenuItem onClick={() => onToggleStatus(transaction)}>
+        {onToggleStatus && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => onToggleStatus(transaction)}
+              >
                 {transaction.isPaid ? (
                   <>
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Voltar para em aberto
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Reabrir
                   </>
                 ) : (
                   <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Marcar como pago
+                    <Check className="h-4 w-4 mr-1" />
+                    Pagar
                   </>
                 )}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onDelete?.(transaction.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir lancamento
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {transaction.isPaid ? "Voltar para em aberto" : "Marcar como pago"}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </div>
   );

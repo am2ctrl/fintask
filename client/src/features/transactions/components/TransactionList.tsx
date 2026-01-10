@@ -1,16 +1,14 @@
 import { useMemo } from "react";
+import { Link } from "wouter";
 import { Card } from "@/shared/components/ui/card";
 import { TransactionItem, type Transaction } from "./TransactionItem";
-import { FileX } from "lucide-react";
+import { FileX, ArrowRight } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import type { DualRunningBalances } from "@/shared/hooks/useTransactionCalculations";
 
 interface TransactionListProps {
   transactions: Transaction[];
-  onEdit?: (transaction: Transaction) => void;
-  onDelete?: (id: string) => void;
   onToggleStatus?: (transaction: Transaction) => void;
-  onAddNew?: () => void;
   showHeader?: boolean;
   showRunningBalance?: boolean;
   runningBalances?: DualRunningBalances;
@@ -19,10 +17,7 @@ interface TransactionListProps {
 
 export function TransactionList({
   transactions,
-  onEdit,
-  onDelete,
   onToggleStatus,
-  onAddNew,
   showHeader = true,
   showRunningBalance = true,
   runningBalances,
@@ -42,13 +37,14 @@ export function TransactionList({
         <FileX className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-semibold mb-2">Nenhuma transacao encontrada</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Comece adicionando sua primeira transacao
+          Cadastre suas contas na secao de Pagamentos
         </p>
-        {onAddNew && (
-          <Button onClick={onAddNew} data-testid="button-add-first-transaction">
-            Adicionar Transacao
+        <Link href="/pagamentos">
+          <Button data-testid="button-go-to-payments">
+            Ir para Pagamentos
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        )}
+        </Link>
       </Card>
     );
   }
@@ -82,8 +78,6 @@ export function TransactionList({
             runningBalanceReal={showRunningBalance ? runningBalances?.saldoReal.get(transaction.id) : undefined}
             runningBalancePrevisto={showRunningBalance ? runningBalances?.saldoPrevisto.get(transaction.id) : undefined}
             showDualBalance={showRunningBalance}
-            onEdit={onEdit}
-            onDelete={onDelete}
             onToggleStatus={onToggleStatus}
           />
         ))}
