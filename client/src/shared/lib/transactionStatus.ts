@@ -1,6 +1,6 @@
-import { isBefore, startOfDay } from "date-fns";
+import { isBefore, startOfDay, isToday } from "date-fns";
 
-export type TransactionStatus = "paid" | "pending" | "overdue";
+export type TransactionStatus = "paid" | "pending" | "overdue" | "due_today";
 
 export interface StatusInfo {
   status: TransactionStatus;
@@ -24,13 +24,26 @@ export function getTransactionStatusInfo(transaction: {
     };
   }
 
-  if (transaction.dueDate && isBefore(transaction.dueDate, today)) {
-    return {
-      status: "overdue",
-      label: "Vencido",
-      badgeClassName: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-      rowClassName: "border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-950/20",
-    };
+  if (transaction.dueDate) {
+    const dueDateNormalized = startOfDay(transaction.dueDate);
+
+    if (isBefore(dueDateNormalized, today)) {
+      return {
+        status: "overdue",
+        label: "Vencido",
+        badgeClassName: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        rowClassName: "border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-950/20",
+      };
+    }
+
+    if (isToday(transaction.dueDate)) {
+      return {
+        status: "due_today",
+        label: "Vence Hoje",
+        badgeClassName: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+        rowClassName: "border-l-4 border-l-orange-500 bg-orange-50/50 dark:bg-orange-950/20",
+      };
+    }
   }
 
   return {
