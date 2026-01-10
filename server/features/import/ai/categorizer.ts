@@ -14,6 +14,7 @@ export interface CategoryForAI {
   id: string;
   name: string;
   type: "income" | "expense";
+  parentId?: string | null;
 }
 
 // Gemini 2.5 Flash - Principal (tier 1) - lazy initialization

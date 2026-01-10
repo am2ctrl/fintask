@@ -96,7 +96,7 @@ export function registerImportRoutes(app: Express) {
       logger.debug("\n🤖 PASSO 4: Categorizando com IA (lotes paralelos)...");
       const categorized = await categorizeBatch(
         transactionsWithTypes,
-        categories.map(c => ({ id: c.id, name: c.name, type: c.type }))
+        categories.map(c => ({ id: c.id, name: c.name, type: c.type, parentId: c.parent_id }))
       );
       logger.debug(`   ✓ ${categorized.length} transações categorizadas`);
 
@@ -113,6 +113,7 @@ export function registerImportRoutes(app: Express) {
       const categoryMap = new Map(categories.map(c => [c.id, c.name]));
       const finalTransactions = processed.map(t => ({
         ...t,
+        name: t.description,  // ✅ Usar description como name (campo obrigatório no DB)
         categoryId: t.categoryId,  // ✅ Incluir UUID
         category: categoryMap.get(t.categoryId) || "Outros",  // ✅ E nome
       }));
