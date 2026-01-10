@@ -118,7 +118,7 @@ export function TransactionModal({
     }
 
     onSave({
-      date,
+      date: format(date, "yyyy-MM-dd"),
       amount: parseFloat(amount),
       type,
       categoryId,
@@ -129,7 +129,7 @@ export function TransactionModal({
         installmentNumber: parsedInstallmentNumber,
         installmentsTotal: parsedInstallmentsTotal,
       } : {}),
-      ...(type === "expense" && dueDate ? { dueDate } : {}),
+      ...(type === "expense" && dueDate ? { dueDate: format(dueDate, "yyyy-MM-dd") } : {}),
       isPaid,
       isRecurring,
       recurringMonths: parsedRecurringMonths,
