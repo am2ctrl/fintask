@@ -31,6 +31,74 @@ function getGemini() {
   return genAI;
 }
 
+/**
+ * Função auxiliar para extrair transações usando IA (Gemini/GPT)
+ * Usada como fallback quando o parser local não consegue extrair
+ */
+async function extractWithAI(
+  text: string,
+  statementType: "credit_card" | "checking" | undefined,
+  categories: Array<{ id: string; name: string; type: "income" | "expense" }>
+): Promise<any[]> {
+  const prompt = buildExtractionPrompt(text, statementType || "checking", categories);
+
+  let content: string;
+
+  const gemini = getGemini();
+  const openaiClient = getOpenAI();
+
+  try {
+    if (!gemini) {
+      throw new Error("Gemini not configured");
+    }
+    logger.debug("   🚀 Tentando Gemini 2.5 Flash...");
+    const model = gemini.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.1,
+      }
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    content = response.text();
+    logger.debug("   ✅ Gemini respondeu com sucesso!");
+  } catch (geminiError) {
+    logger.warn("   ⚠️ Gemini falhou, tentando GPT-4o Mini...");
+
+    if (!openaiClient) {
+      logger.error("   ❌ Nenhuma IA configurada");
+      return [];
+    }
+
+    try {
+      const response = await openaiClient.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 16000,
+        temperature: 0.1,
+      });
+
+      content = response.choices[0]?.message?.content || "{}";
+      logger.debug("   ✅ GPT-4o Mini respondeu com sucesso!");
+    } catch (openaiError) {
+      logger.error("   ❌ GPT-4o Mini também falhou");
+      return [];
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(content);
+    logger.debug(`   📊 IA extraiu ${parsed.transactions?.length || 0} transações`);
+    return parsed.transactions || [];
+  } catch (parseError) {
+    logger.error("   ❌ Erro ao parsear resposta da IA");
+    return [];
+  }
+}
+
 export function registerImportRoutes(app: Express) {
   // ============================================================================
   // NOVA ROTA OTIMIZADA - Parser Local + IA apenas para categorização
@@ -63,34 +131,78 @@ export function registerImportRoutes(app: Express) {
       logger.debug(`   ✓ Confiança: ${(parseResult.metadata.confidence * 100).toFixed(0)}%`);
       logger.debug(`   ✓ Método: ${parseResult.metadata.parsingMethod}`);
 
-      if (parseResult.transactions.length === 0) {
-        logger.debug("⚠️ Nenhuma transação encontrada pelo parser local");
-        logger.debug("   Você pode tentar o método legado (/api/extract-transactions)");
-        return res.json({
-          transactions: [],
-          metadata: {
-            method: "fast_parser",
-            bank: parseResult.bank,
-            confidence: parseResult.metadata.confidence,
-            warning: "Nenhuma transação detectada - tente o método legado"
-          }
-        });
-      }
-
-      // PASSO 2: Detectar tipo (income/expense) localmente
-      logger.debug("\n🎯 PASSO 2: Detectando tipos de transação...");
-      const transactionsWithTypes = parseResult.transactions.map(t => ({
-        ...t,
-        type: t.type || detectTransactionType(t.description),
-      }));
-
-      // PASSO 3: Buscar categorias e cartões em paralelo (OTIMIZAÇÃO)
-      logger.debug("\n📂 PASSO 3: Carregando categorias e cartões...");
+      // PASSO 2: Buscar categorias e cartões em paralelo (necessário para fallback IA também)
+      logger.debug("\n📂 PASSO 2: Carregando categorias e cartões...");
       const [categories, allCards] = await Promise.all([
         storage.getAllCategories(userId),
         storage.getAllCreditCards(userId)
       ]);
       logger.debug(`   ✓ ${categories.length} categorias, ${allCards.length} cartões`);
+
+      if (parseResult.transactions.length === 0) {
+        logger.debug("⚠️ Nenhuma transação encontrada pelo parser local");
+        logger.debug("   🤖 Ativando fallback com IA (Gemini/GPT)...");
+
+        // FALLBACK AUTOMÁTICO: Usar IA para extrair transações
+        const aiTransactions = await extractWithAI(
+          text,
+          userStatementType || undefined,
+          categories.map(c => ({ id: c.id, name: c.name, type: c.type as "income" | "expense" }))
+        );
+
+        if (aiTransactions.length === 0) {
+          logger.debug("❌ IA também não encontrou transações");
+          return res.json({
+            transactions: [],
+            metadata: {
+              method: "ai_fallback",
+              bank: parseResult.bank,
+              confidence: 0,
+              warning: "Não foi possível extrair transações deste extrato"
+            }
+          });
+        }
+
+        // Processar transações da IA
+        const processed = await postProcessTransactions(
+          aiTransactions,
+          statementType || parseResult.statementType,
+          userId
+        );
+
+        const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+        const finalTransactions = processed.map(t => ({
+          ...t,
+          name: t.description,
+          categoryId: t.categoryId,
+          category: categoryMap.get(t.categoryId) || "Outros",
+        }));
+
+        const totalTime = Date.now() - startTime;
+        logger.debug(`\n✅ FALLBACK IA CONCLUÍDO!`);
+        logger.debug(`   ⏱️ Tempo total: ${totalTime}ms`);
+        logger.debug(`   📊 Transações: ${finalTransactions.length}`);
+
+        return res.json({
+          transactions: finalTransactions,
+          metadata: {
+            method: "ai_fallback",
+            bank: parseResult.bank,
+            statementType: statementType || parseResult.statementType,
+            totalTransactions: finalTransactions.length,
+            processingTime: totalTime,
+            confidence: 0.85,
+            parsingMethod: "ai",
+          }
+        });
+      }
+
+      // PASSO 3: Detectar tipo (income/expense) localmente
+      logger.debug("\n🎯 PASSO 3: Detectando tipos de transação...");
+      const transactionsWithTypes = parseResult.transactions.map(t => ({
+        ...t,
+        type: t.type || detectTransactionType(t.description),
+      }));
 
       // PASSO 4: IA apenas para categorização (RÁPIDO - em lotes paralelos)
       logger.debug("\n🤖 PASSO 4: Categorizando com IA (lotes paralelos)...");
